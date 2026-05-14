@@ -4,7 +4,10 @@ __pycache__/
 *$py.class
 *.so
 
+
 # Distribution / packaging
+.claude/
+.idea/
 build/
 dist/
 *.egg-info/
