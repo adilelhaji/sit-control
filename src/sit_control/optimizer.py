@@ -181,6 +181,107 @@ class GekkoOptimiser:
             converged=converged,
         )
 
+    def solve_L1_warmstart(
+        self,
+        control_config: ControlConfig,
+        u_init: tuple[NDArray, NDArray],
+    ) -> OptimisationResult:
+        """Solve the L1 problem with a custom control warm-start.
+
+        Identical to solve_L1 but replaces the ramp initialisation with an
+        externally provided control profile (e.g. the bisection solution).
+
+        Args:
+            control_config: Operational configuration (T, U_max, epsilon).
+            u_init: Tuple (t_array, u_array) of the warm-start control.
+
+        Returns:
+            OptimisationResult with the optimal trajectories.
+        """
+        try:
+            from gekko import GEKKO
+        except ImportError as exc:
+            raise ImportError(
+                "GEKKO is required: install with `pip install gekko`"
+            ) from exc
+
+        p = self.params
+        cfg = control_config
+        epsilon = cfg.epsilon if cfg.epsilon is not None else p.F_bar / 4.0
+        N = self.num_config.n_collocation
+
+        logger.info(
+            "Solving L1 (warm-start) with T=%g, U_max=%g, epsilon=%g, N=%d",
+            cfg.T, cfg.U_max, epsilon, N,
+        )
+
+        m = GEKKO(remote=False)
+        m.time = np.linspace(0.0, cfg.T, N)
+
+        F  = m.Var(value=p.F_bar, lb=0.0, name="F")
+        Ms = m.Var(value=0.0,     lb=0.0, name="Ms")
+        m.fix_initial(F,  val=p.F_bar)
+        m.fix_initial(Ms, val=0.0)
+
+        # Interpolate provided warm-start onto GEKKO grid
+        t_ws, u_ws = u_init
+        u_init_grid = np.clip(np.interp(m.time, t_ws, u_ws), 0.0, cfg.U_max)
+
+        u = m.MV(value=u_init_grid, lb=0.0, ub=cfg.U_max, name="u")
+        u.STATUS = 1
+        u.DCOST = 0.0
+
+        denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
+        numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
+        denom = denom_E * (
+            (1.0 - p.nu) * p.nu_E * p.beta_E * F
+            + p.delta_M * p.gamma_s * Ms * denom_E
+        ) + self.num_config.singular_eps
+
+        m.Equation(F.dt() == numerator / denom - p.delta_F * F)
+        m.Equation(Ms.dt() == u - p.delta_s * Ms)
+
+        final = np.zeros(N)
+        final[-1] = 1
+        final_param = m.Param(value=final, name="final")
+        m.Equation(F * final_param <= epsilon)
+
+        m.Minimize(m.integral(u))
+
+        m.options.SOLVER = self.num_config.gekko_solver
+        m.options.IMODE = 6
+        m.options.RTOL = self.num_config.apopt_rtol
+        m.options.OTOL = 1e-6
+
+        t_start = time.perf_counter()
+        try:
+            m.solve(disp=False)
+            converged = True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("GEKKO (warm-start) did not converge: %s", exc)
+            converged = False
+        wall_time = time.perf_counter() - t_start
+
+        u_arr = np.array(u.value)
+        F_arr = np.array(F.value)
+        Ms_arr = np.array(Ms.value)
+        cost = float(np.trapezoid(u_arr, m.time))
+
+        logger.info(
+            "L1 warm-start solved in %.2fs with J(u*) = %.4e",
+            wall_time, cost,
+        )
+
+        return OptimisationResult(
+            t=np.asarray(m.time),
+            u_opt=u_arr,
+            F_opt=F_arr,
+            Ms_opt=Ms_arr,
+            cost=cost,
+            wall_time=wall_time,
+            converged=converged,
+        )
+
     def solve_L2(
         self,
         control_config: ControlConfig,
