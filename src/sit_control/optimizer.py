@@ -135,12 +135,11 @@ class GekkoOptimiser:
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
 
-        # Terminal constraint F(T) = epsilon (equality: active at optimum by
-        # complementary slackness; avoids F(T) << epsilon wasting control effort).
+        # Terminal constraint F(T) <= epsilon
         final = np.zeros(N)
         final[-1] = 1
         final_param = m.Param(value=final, name="final")
-        m.Equation(F * final_param == epsilon)
+        m.Equation(F * final_param <= epsilon)
 
         # L1 cost functional
         m.Minimize(m.integral(u))
@@ -273,11 +272,11 @@ class GekkoOptimiser:
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
 
-        # Terminal constraint F(T) = epsilon (equality)
+        # Terminal constraint F(T) <= epsilon
         final = np.zeros(N)
         final[-1] = 1
         final_param = m.Param(value=final, name="final")
-        m.Equation(F * final_param == epsilon)
+        m.Equation(F * final_param <= epsilon)
 
         # L2 cost functional: integral of (c/2) * u^2
         m.Minimize(m.integral(c_weight / 2.0 * u**2))
