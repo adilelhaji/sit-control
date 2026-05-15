@@ -101,11 +101,14 @@ class NumericalConfig:
     """Numerical configuration for solvers.
 
     Attributes:
-        rtol: Relative tolerance for ODE integration.
-        atol: Absolute tolerance for ODE integration.
+        rtol: Relative tolerance for ODE integration (RK45).
+        atol: Absolute tolerance for ODE integration (RK45).
         n_collocation: Number of GEKKO collocation points.
         singular_eps: Threshold for the removable singularity of f.
         solver_method: SciPy solve_ivp method.
+        apopt_rtol: Relative tolerance for the APOPT NLP solver inside
+            GEKKO. Kept separate from ``rtol`` because APOPT and RK45
+            operate on different scales; Almeida et al. (2022) use 1e-6.
     """
 
     rtol: float = 1e-8
@@ -113,6 +116,8 @@ class NumericalConfig:
     n_collocation: int = 300
     singular_eps: float = 1e-12
     solver_method: str = "RK45"
+    apopt_rtol: float = 1e-6
+    gekko_solver: int = 1  # 1=APOPT, 3=IPOPT
 
 
 def load_config(path: Path | str) -> dict[str, Any]:

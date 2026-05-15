@@ -7,7 +7,7 @@ Two modes
 
 2. K-Fold cross-validation (--kfold): partition Theta into K=5 folds,
    train K policies (one per fold), and aggregate metrics. Expensive
-   (~K * 2-4 h of CPU); used to certify generalization in the TFG.
+   (~K * 2-4 h of CPU); used to certify policy generalization.
 
 Usage
 -----

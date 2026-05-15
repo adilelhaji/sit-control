@@ -22,6 +22,22 @@ from .simulator import SimulationResult
 
 logger = logging.getLogger(__name__)
 
+
+def _save_figure(fig: Figure, path: Path) -> None:
+    """Save *fig* to *path* and write a companion PNG in the same directory.
+
+    Both files share the rcParams settings (dpi=300, bbox=tight).
+    If *path* already has a ``.png`` suffix only one file is written.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path)
+    logger.info("Saved: %s", path)
+    if path.suffix.lower() != ".png":
+        png_path = path.with_suffix(".png")
+        fig.savefig(png_path)
+        logger.info("Saved: %s", png_path)
+
+
 # Style configuration (applied at import time)
 plt.rcParams.update({
     "figure.figsize": (10, 4),
@@ -75,10 +91,7 @@ def plot_optimal_solution(
     fig.tight_layout()
 
     if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path)
-        logger.info("Figure saved to %s", save_path)
+        _save_figure(fig, Path(save_path))
 
     return fig
 
@@ -120,9 +133,7 @@ def plot_model_comparison(
     fig.tight_layout()
 
     if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path)
+        _save_figure(fig, Path(save_path))
 
     return fig
 
@@ -167,9 +178,7 @@ def plot_convergence(
     fig.tight_layout()
 
     if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path)
+        _save_figure(fig, Path(save_path))
 
     return fig
 
@@ -218,8 +227,6 @@ def plot_strategy_comparison(
     fig.tight_layout()
 
     if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path)
+        _save_figure(fig, Path(save_path))
 
     return fig

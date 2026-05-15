@@ -47,7 +47,7 @@ class RLConfig:
         (Tobin et al. 2017).
     randomize_params
         Names of BiologicalParameters fields to randomize. Defaults to the
-        four parameters identified as most influential in the TFG sensitivity
+        four parameters identified as most influential in the sensitivity
         analysis (Strategy 8): beta_E, delta_F, nu_E, K.
     terminal_penalty
         Multiplier of the squared excess (F(T) - epsilon)^2 in the terminal

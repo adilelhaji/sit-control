@@ -1,4 +1,4 @@
-"""Parametric sensitivity analysis for the L^1 optimal control (TFG Section 4.6).
+"""Parametric sensitivity analysis for the L^1 optimal control.
 
 Varies delta_F, nu_E, and K by +/-20 % around baseline and measures how the
 optimal cost J_{L^1}(u*) and the suppression time t_epsilon change.
@@ -265,10 +265,8 @@ def plot_tornado(
     fig.tight_layout()
 
     if save_path is not None:
-        save_path = Path(save_path)
-        save_path.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(save_path, dpi=300, bbox_inches="tight")
-        logger.info("Tornado chart saved → %s", save_path)
+        from sit_control.plotting import _save_figure
+        _save_figure(fig, Path(save_path))
 
     return fig
 
@@ -278,7 +276,7 @@ def plot_tornado(
 # ---------------------------------------------------------------------------
 
 def _print_summary(sensitivity: dict[str, Any]) -> None:
-    """Print the sensitivity table to stdout (mirrors TFG Table 4.6)."""
+    """Print the sensitivity results as a formatted table to stdout."""
     J0 = sensitivity["baseline"]["J"]
     t0 = sensitivity["baseline"]["t_epsilon_days"]
     t0_str = f"{t0:.1f}" if t0 is not None else "—"

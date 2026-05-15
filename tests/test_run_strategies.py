@@ -58,7 +58,7 @@ def test_variable_impulsive_total_integral_approx() -> None:
     u_func = _variable_impulsive_control(times, amounts, duration=duration)
     t_grid = np.linspace(0, 15, 3000)
     u_grid = np.array([u_func(t) for t in t_grid])
-    integral = float(np.trapz(u_grid, t_grid))
+    integral = float(np.trapezoid(u_grid, t_grid))
     assert integral == pytest.approx(sum(amounts), rel=0.01)
 
 

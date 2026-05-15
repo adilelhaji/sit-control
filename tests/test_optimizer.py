@@ -184,7 +184,7 @@ def test_L2_cost_is_quadratic_functional(optimiser: GekkoOptimiser) -> None:
     import numpy as np
     cfg = ControlConfig(T=150.0, U_max=5000.0)
     result = optimiser.solve_L2(cfg, c_weight=1.0)
-    expected = float(np.trapz(0.5 * result.u_opt**2, result.t))
+    expected = float(np.trapezoid(0.5 * result.u_opt**2, result.t))
     assert abs(result.cost - expected) / (expected + 1e-12) < 1e-6
 
 

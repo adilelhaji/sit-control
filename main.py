@@ -6,7 +6,7 @@ Subcommands
 -----------
 verify      Reproduce the verification table of Almeida et al. (2022).
 convergence Study J(u*) convergence as a function of GEKKO collocation size N.
-strategies  Run and compare the five SIT control strategies (TFG Chapter 4).
+strategies  Run and compare the five SIT control strategies.
 sensitivity Parametric sensitivity analysis +/-20 % on delta_F, nu_E, K.
 rl-train    Train a Deep RL policy (Strategy 9). Requires the [rl] extras.
 rl-eval     Evaluate a trained Deep RL policy on random parameter samples.
@@ -76,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     # --- strategies --------------------------------------------------------
     p_strat = sub.add_parser(
         "strategies",
-        help="Run and compare the five SIT control strategies (TFG Ch. 4)",
+        help="Run and compare the five SIT control strategies.",
         description="Executes strategies 1–5 and writes metrics + comparison figure.",
     )
     _add_common(p_strat)

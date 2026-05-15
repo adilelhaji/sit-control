@@ -49,8 +49,8 @@ class OptimisationResult:
 class GekkoOptimiser:
     """Optimal control solver wrapping GEKKO.
 
-    Implements the L^1-norm cost functional of equation (2.10) of
-    the TFG. The L^2-norm variant is obtained by replacing the
+    Implements the L^1-norm cost functional of Almeida et al. (2022),
+    equation (4). The L^2-norm variant is obtained by replacing the
     objective.
     """
 
@@ -104,39 +104,53 @@ class GekkoOptimiser:
         m = GEKKO(remote=False)
         m.time = np.linspace(0.0, cfg.T, N)
 
-        # State variables
-        F = m.Var(value=p.F_bar, lb=0.0, name="F")
-        Ms = m.Var(value=0.0, lb=0.0, name="Ms")
+        # State variables — initial conditions fixed explicitly (IMODE=6 requires
+        # the first element to match the physical initial state).
+        F  = m.Var(value=p.F_bar, lb=0.0, name="F")
+        Ms = m.Var(value=0.0,     lb=0.0, name="Ms")
+        m.fix_initial(F,  val=p.F_bar)
+        m.fix_initial(Ms, val=0.0)
 
-        # Control variable
-        u = m.MV(value=0.0, lb=0.0, ub=cfg.U_max, name="u")
+        # Control variable — warm-started with a ramp matching the bang-singular
+        # structure: zero for the first half, then linearly increasing to U_max/2.
+        # This avoids APOPT converging to the u=0 trivial local minimum.
+        t_grid  = np.linspace(0.0, cfg.T, N)
+        u_init  = np.where(t_grid < cfg.T / 2, 0.0,
+                           cfg.U_max / 2 * (t_grid - cfg.T / 2) / (cfg.T / 2))
+        u = m.MV(value=u_init, lb=0.0, ub=cfg.U_max, name="u")
         u.STATUS = 1
         u.DCOST = 0.0  # No penalty on control variation
 
         # System dynamics (reduced model S1)
+        # Regularised denominator: adds singular_eps to avoid 0/0 at (F,Ms)=(0,0).
+        # The true limit is -delta_F*F (see model.py), but GEKKO cannot branch;
+        # singular_eps << F_bar so the regularisation is negligible in practice.
         denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
         numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
         denom = denom_E * (
             (1.0 - p.nu) * p.nu_E * p.beta_E * F
             + p.delta_M * p.gamma_s * Ms * denom_E
-        )
+        ) + self.num_config.singular_eps
 
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
 
-        # Terminal constraint F(T) <= epsilon
+        # Terminal constraint F(T) = epsilon (equality: active at optimum by
+        # complementary slackness; avoids F(T) << epsilon wasting control effort).
         final = np.zeros(N)
         final[-1] = 1
         final_param = m.Param(value=final, name="final")
-        m.Equation(F * final_param <= epsilon)
+        m.Equation(F * final_param == epsilon)
 
         # L1 cost functional
         m.Minimize(m.integral(u))
 
         # Solver configuration
-        m.options.SOLVER = 1  # APOPT
+        # RTOL here is the NLP convergence tolerance for APOPT (not ODE rtol).
+        # Almeida et al. (2022) use 1e-6; stored separately as apopt_rtol.
+        m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
         m.options.IMODE = 6   # Dynamic optimal control
-        m.options.RTOL = self.num_config.rtol
+        m.options.RTOL = self.num_config.apopt_rtol
         m.options.OTOL = 1e-6
 
         t_start = time.perf_counter()
@@ -151,7 +165,7 @@ class GekkoOptimiser:
         u_arr = np.array(u.value)
         F_arr = np.array(F.value)
         Ms_arr = np.array(Ms.value)
-        cost = float(np.trapz(u_arr, m.time))
+        cost = float(np.trapezoid(u_arr, m.time))
 
         logger.info(
             "L1 problem solved in %.2fs with J(u*) = %.4e",
@@ -175,8 +189,7 @@ class GekkoOptimiser:
     ) -> OptimisationResult:
         """Solve the L^2 optimal control problem.
 
-        Minimises the quadratic cost functional of equation (2.10b) / (J_L2)
-        of the TFG::
+        Minimises the quadratic cost functional (L^2 variant)::
 
             J_2(u) = integral_0^T  (c / 2) * u(t)^2  dt
 
@@ -210,7 +223,7 @@ class GekkoOptimiser:
 
         References
         ----------
-        TFG eq. (J_L2) and Almeida et al. (2022), Section 5.
+        Almeida et al. (2022), Section 5.
         """
         if c_weight <= 0:
             raise ValueError(f"c_weight must be positive, got {c_weight}")
@@ -235,39 +248,44 @@ class GekkoOptimiser:
         m = GEKKO(remote=False)
         m.time = np.linspace(0.0, cfg.T, N)
 
-        # State variables
-        F = m.Var(value=p.F_bar, lb=0.0, name="F")
-        Ms = m.Var(value=0.0, lb=0.0, name="Ms")
+        # State variables — initial conditions fixed explicitly
+        F  = m.Var(value=p.F_bar, lb=0.0, name="F")
+        Ms = m.Var(value=0.0,     lb=0.0, name="Ms")
+        m.fix_initial(F,  val=p.F_bar)
+        m.fix_initial(Ms, val=0.0)
 
-        # Control variable — same admissible set as L1
-        u = m.MV(value=0.0, lb=0.0, ub=cfg.U_max, name="u")
+        # Control variable — ramp warm-start to avoid trivial u=0 local minimum
+        t_grid = np.linspace(0.0, cfg.T, N)
+        u_init = np.where(t_grid < cfg.T / 2, 0.0,
+                          cfg.U_max / 2 * (t_grid - cfg.T / 2) / (cfg.T / 2))
+        u = m.MV(value=u_init, lb=0.0, ub=cfg.U_max, name="u")
         u.STATUS = 1
         u.DCOST = 0.0
 
-        # System dynamics — identical to S1 in solve_L1
+        # System dynamics — identical to S1 in solve_L1 (regularised denom)
         denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
         numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
         denom = denom_E * (
             (1.0 - p.nu) * p.nu_E * p.beta_E * F
             + p.delta_M * p.gamma_s * Ms * denom_E
-        )
+        ) + self.num_config.singular_eps
 
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
 
-        # Terminal constraint F(T) <= epsilon
+        # Terminal constraint F(T) = epsilon (equality)
         final = np.zeros(N)
         final[-1] = 1
         final_param = m.Param(value=final, name="final")
-        m.Equation(F * final_param <= epsilon)
+        m.Equation(F * final_param == epsilon)
 
         # L2 cost functional: integral of (c/2) * u^2
         m.Minimize(m.integral(c_weight / 2.0 * u**2))
 
-        # Solver configuration
-        m.options.SOLVER = 1   # APOPT
+        # Solver configuration (apopt_rtol separate from ODE rtol)
+        m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
         m.options.IMODE = 6    # Dynamic optimal control
-        m.options.RTOL = self.num_config.rtol
+        m.options.RTOL = self.num_config.apopt_rtol
         m.options.OTOL = 1e-6
 
         t_start = time.perf_counter()
@@ -282,7 +300,7 @@ class GekkoOptimiser:
         u_arr = np.array(u.value)
         F_arr = np.array(F.value)
         Ms_arr = np.array(Ms.value)
-        cost = float(np.trapz(0.5 * c_weight * u_arr**2, m.time))
+        cost = float(np.trapezoid(0.5 * c_weight * u_arr**2, m.time))
 
         logger.info(
             "L2 problem solved in %.2fs with J2(u*) = %.4e",

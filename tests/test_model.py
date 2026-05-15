@@ -16,7 +16,7 @@ def almeida_params() -> BiologicalParameters:
 
 
 def test_R0_value(almeida_params: BiologicalParameters) -> None:
-    """R0 should match the value reported in the TFG (~76.56)."""
+    """R0 should match the value from Almeida et al. (2022) (~76.56)."""
     assert almeida_params.R0 == pytest.approx(76.5625, rel=1e-3)
 
 

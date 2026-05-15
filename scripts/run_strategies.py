@@ -1,4 +1,4 @@
-"""Execute and compare the five SIT control strategies (TFG Chapter 4).
+"""Execute and compare five SIT control strategies for Aedes polynesiensis.
 
 Strategies
 ----------
@@ -133,7 +133,7 @@ def run_strategy_1(
     optimiser: GekkoOptimiser,
     cfg: ControlConfig,
 ) -> tuple[OptimisationResult, dict[str, Any]]:
-    """Strategy 1: continuous optimal L^1 (TFG Section 4.1)."""
+    """Strategy 1: continuous optimal L^1 (Section 4.1)."""
     logger.info("Strategy 1 — L1 optimal | T=%g, U_max=%g", cfg.T, cfg.U_max)
     t0 = time.perf_counter()
     result = optimiser.solve_L1(cfg)
@@ -149,7 +149,7 @@ def run_strategy_2(
     cfg: ControlConfig,
     J_reference: float,
 ) -> tuple[SimulationResult, dict[str, Any]]:
-    """Strategy 2: constant release with total cost = J_reference (TFG Section 4.2).
+    """Strategy 2: constant release with total cost = J_reference (Section 4.2).
 
     Sets u_c = J_reference / T so that integral(u_c, 0, T) = J_reference.
     """
@@ -170,7 +170,7 @@ def run_strategy_3(
     J_reference: float,
     tau: float,
 ) -> tuple[SimulationResult, dict[str, Any]]:
-    """Strategy 3: periodic impulsive with period tau (TFG Section 4.3).
+    """Strategy 3: periodic impulsive with period tau (Section 4.3).
 
     Distributes J_reference uniformly across all pulses.
     """
@@ -198,7 +198,7 @@ def run_strategy_4(
     cfg: ControlConfig,
     c_weight: float = 1.0,
 ) -> tuple[OptimisationResult, dict[str, Any]]:
-    """Strategy 4: continuous optimal L^2 (TFG Section 4.4)."""
+    """Strategy 4: continuous optimal L^2 (Section 4.4)."""
     logger.info("Strategy 4 — L2 optimal | T=%g, c=%.2g", cfg.T, c_weight)
     t0 = time.perf_counter()
     result = optimiser.solve_L2(cfg, c_weight=c_weight)
@@ -222,7 +222,7 @@ def run_strategy_5(
     J_initial_guess: float | None = None,
     maxiter: int = 300,
 ) -> tuple[SimulationResult, dict[str, Any]]:
-    """Strategy 5: optimal impulsive — optimise per-pulse amounts (TFG Section 4.5).
+    """Strategy 5: optimal impulsive — optimise per-pulse amounts (Section 4.5).
 
     Solves min Σ c_k subject to F(T) ≤ ε using scipy SLSQP.
     Each pulse is approximated as a rectangular release of width `pulse_duration`.

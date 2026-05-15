@@ -19,7 +19,7 @@ def cost_L1(
     Returns:
         Integral of u over [t[0], t[-1]].
     """
-    return float(np.trapz(u, t))
+    return float(np.trapezoid(u, t))
 
 
 def cost_L2(
@@ -37,7 +37,7 @@ def cost_L2(
     Returns:
         Integral of (c/2) * u^2 over [t[0], t[-1]].
     """
-    return float(np.trapz(0.5 * c * u**2, t))
+    return float(np.trapezoid(0.5 * c * u**2, t))
 
 
 def relative_error(value: float, reference: float) -> float:

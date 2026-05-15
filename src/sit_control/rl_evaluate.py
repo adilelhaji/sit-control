@@ -183,7 +183,7 @@ def kfold_evaluate(
 
     Notes
     -----
-    Training K policies is expensive (~K * 2-4 h on CPU). For TFG scope, this
+    Training K policies is expensive (~K * 2-4 h on CPU). This
     function is provided as a reference implementation; the primary evaluation
     protocol is ``evaluate_policy`` over the full Theta.
     """

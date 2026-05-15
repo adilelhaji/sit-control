@@ -23,3 +23,4 @@ numerical:
   n_collocation: 300
   singular_eps: 1.0e-12
   solver_method: "RK45"
+  apopt_rtol: 1.0e-6  # APOPT NLP tolerance — Almeida et al. (2022) use 1e-6

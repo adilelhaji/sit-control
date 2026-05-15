@@ -1,8 +1,8 @@
 """Mosquito population dynamics: full (S2) and reduced (S1) models.
 
-Implements equations (2.2) and (2.3) of the TFG, derived from Almeida
-et al. (2022). The reduced model uses the quasi-stationary approximation
-described in Section 2.2 of the same article.
+Implements the ODE systems of Almeida et al. (2022), equations (2) and (3).
+The reduced model S1 uses the quasi-stationary approximation described in
+Section 2.2 of the same article.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ def recruitment(
 ) -> float | NDArray[np.float64]:
     """Non-linear recruitment function f(F, M_s) of the reduced model S1.
 
-    Implements equation (2.5) of the TFG. The function has a removable
+    Implements equation (7) of Almeida et al. (2022). The function has a removable
     singularity at (F, M_s) = (0, 0); the implementation returns the
     asymptotic value -delta_F * F when the denominator falls below
     `singular_eps`.
@@ -66,7 +66,6 @@ def rhs_reduced(
     state: NDArray[np.float64],
     u_func: callable,
     params: BiologicalParameters,
-    *,
     singular_eps: float = 1e-12,
 ) -> NDArray[np.float64]:
     """Right-hand side of the reduced system S1.
