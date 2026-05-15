@@ -189,7 +189,7 @@ class ForwardBackwardSweep:
         control_config: ControlConfig,
         u_init: tuple[NDArray, NDArray] | None = None,
         n_iter: int = 400,
-        alpha: float = 0.5,
+        alpha: float = 0.3,
         tol: float = 1e-4,
         M_penalty: float = 1e4,
         n_grid: int = 500,
@@ -242,8 +242,11 @@ class ForwardBackwardSweep:
             # Forward pass
             F, Ms = self._forward(t, u)
 
-            # Penalty-based terminal multiplier: λ₁(T) = M·max(0, F(T)−ε)
-            mu = M_penalty * max(0.0, float(F[-1]) - epsilon)
+            # Two-sided penalty: λ₁(T) = M·(F(T)−ε).
+            # Signed version (not max(0,...)) because at the optimum the
+            # constraint is active F(T)=ε, so we solve the equality problem.
+            # Positive μ → push F down; negative μ → push F up.
+            mu = M_penalty * (float(F[-1]) - epsilon)
 
             # Backward pass
             lam1, lam2 = self._backward(t, F, Ms, mu)
