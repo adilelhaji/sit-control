@@ -184,9 +184,16 @@ class SITEnv(gym.Env):
                 else float(self.params.F_bar / 4.0)
             )
             excess = max(0.0, F_new - epsilon)
+            # Linear (hinge) penalty rather than quadratic: the quadratic term
+            # has zero gradient as excess -> 0, so the agent always stops
+            # slightly above epsilon (systematic under-suppression). A linear
+            # penalty keeps a constant gradient at the boundary, driving F(T)
+            # down to epsilon. A quadratic term is retained, with small weight,
+            # to penalise large violations more strongly.
+            rel = excess / self._F_scale
             reward -= (
                 self.rl_cfg.terminal_penalty
-                * (excess / self._F_scale) ** 2
+                * (rel + rel * rel)
                 * (self.ctrl_cfg.U_max * self.ctrl_cfg.T)
             )
 
