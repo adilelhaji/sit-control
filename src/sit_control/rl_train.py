@@ -41,6 +41,12 @@ class TrainingConfig:
         Number of parallel environments (for PPO). Ignored by SAC.
     learning_rate
         Optimiser learning rate. Defaults are algorithm-specific.
+    ent_coef
+        Entropy regularisation coefficient for PPO. A strictly positive value
+        (e.g. 0.01) encourages exploration and prevents the policy from
+        collapsing to the trivial "release nothing" local optimum. Ignored by
+        SAC, which tunes its entropy temperature automatically (``ent_coef=
+        "auto"``).
     seed
         Random seed for reproducibility.
     policy_kwargs
@@ -51,6 +57,7 @@ class TrainingConfig:
     total_timesteps: int = 1_000_000
     n_envs: int = 16
     learning_rate: float = 3e-4
+    ent_coef: float = 0.0
     seed: int = 0
     policy_kwargs: dict[str, Any] | None = None
 
@@ -108,7 +115,7 @@ def train(
             gamma=0.99,
             gae_lambda=0.95,
             clip_range=0.2,
-            ent_coef=0.0,
+            ent_coef=train_cfg.ent_coef,
             policy_kwargs=policy_kwargs,
             seed=train_cfg.seed,
             verbose=1,

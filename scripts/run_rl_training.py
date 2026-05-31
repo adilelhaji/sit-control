@@ -40,6 +40,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--ent-coef", type=float, default=0.0,
+        help="PPO entropy coefficient; use >0 (e.g. 0.01) to encourage "
+             "exploration and avoid the 'release nothing' collapse. Ignored "
+             "by SAC (entropy auto-tuned).",
+    )
+    parser.add_argument(
+        "--terminal-penalty", type=float, default=1.0,
+        help="Weight of the squared terminal-constraint violation in the "
+             "reward; larger values push the agent harder toward F(T)<=eps.",
+    )
+    parser.add_argument(
         "--randomize-low", type=float, default=0.7,
         help="Lower factor for domain randomization (default 0.7)",
     )
@@ -65,12 +76,14 @@ def main(argv: list[str] | None = None) -> int:
     rl_cfg = RLConfig(
         randomize=not args.no_randomize,
         randomize_range=(args.randomize_low, args.randomize_high),
+        terminal_penalty=args.terminal_penalty,
     )
     train_cfg = TrainingConfig(
         algorithm=args.algorithm,
         total_timesteps=args.timesteps,
         n_envs=args.n_envs,
         learning_rate=args.learning_rate,
+        ent_coef=args.ent_coef,
         seed=args.seed,
     )
 
