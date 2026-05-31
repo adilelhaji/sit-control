@@ -151,7 +151,13 @@ def run_strategy_1(
     logger.info("Strategy 1 — L1 optimal (bisection) | T=%g, U_max=%g", cfg.T, cfg.U_max)
     t0 = time.perf_counter()
     bis = solve_by_bisection(params, cfg)
-    t, F, u = build_formula9_trajectory(params, cfg, bis, optimiser.num_config)
+    # n_eval=20000: the L1 cost is the trapezoidal integral of u over the
+    # singular arc; the default grid (2000) under-resolves it and overstates
+    # J by ~0.1% (1.330e5 vs the converged 1.328e5). The fine grid makes the
+    # reported cost match the converged optimum used in Chapter 3.
+    t, F, u = build_formula9_trajectory(
+        params, cfg, bis, optimiser.num_config, n_eval=20000
+    )
     wall = time.perf_counter() - t0
     result = OptimisationResult(
         t=t,
