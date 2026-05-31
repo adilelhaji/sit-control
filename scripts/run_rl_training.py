@@ -40,6 +40,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--batch-size", type=int, default=64,
+        help="PPO minibatch size; a larger value (e.g. 256) lowers gradient "
+             "variance and stabilises training across seeds.",
+    )
+    parser.add_argument(
+        "--lr-schedule", choices=["constant", "linear"], default="constant",
+        help="PPO learning-rate schedule; 'linear' decays to 0 over training "
+             "(standard PPO stabiliser, reduces seed-to-seed variance).",
+    )
+    parser.add_argument(
         "--ent-coef", type=float, default=0.0,
         help="PPO entropy coefficient; use >0 (e.g. 0.01) to encourage "
              "exploration and avoid the 'release nothing' collapse. Ignored "
@@ -84,6 +94,8 @@ def main(argv: list[str] | None = None) -> int:
         n_envs=args.n_envs,
         learning_rate=args.learning_rate,
         ent_coef=args.ent_coef,
+        batch_size=args.batch_size,
+        lr_schedule=args.lr_schedule,
         seed=args.seed,
     )
 

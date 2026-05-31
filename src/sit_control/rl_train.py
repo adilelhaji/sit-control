@@ -58,8 +58,23 @@ class TrainingConfig:
     n_envs: int = 16
     learning_rate: float = 3e-4
     ent_coef: float = 0.0
+    batch_size: int = 64
+    lr_schedule: Literal["constant", "linear"] = "constant"
     seed: int = 0
     policy_kwargs: dict[str, Any] | None = None
+
+
+def _linear_schedule(initial: float):
+    """Return an SB3 schedule that decays linearly from `initial` to 0.
+
+    SB3 calls the schedule with `progress_remaining` in [1, 0]. A linear decay
+    of the learning rate is a standard PPO stabiliser: it removes the late-
+    training policy drift that, with a constant rate, makes some seeds diverge
+    to poor optima (high seed-to-seed variance).
+    """
+    def _f(progress_remaining: float) -> float:
+        return progress_remaining * initial
+    return _f
 
 
 def train(
@@ -116,12 +131,17 @@ def train(
             vec_env, norm_obs=False, norm_reward=True, gamma=0.99,
         )
         policy_kwargs = train_cfg.policy_kwargs or {"net_arch": [64, 64, 64]}
+        lr = (
+            _linear_schedule(train_cfg.learning_rate)
+            if train_cfg.lr_schedule == "linear"
+            else train_cfg.learning_rate
+        )
         model = PPO(
             "MlpPolicy",
             vec_env,
-            learning_rate=train_cfg.learning_rate,
+            learning_rate=lr,
             n_steps=2048,
-            batch_size=64,
+            batch_size=train_cfg.batch_size,
             n_epochs=10,
             gamma=0.99,
             gae_lambda=0.95,
