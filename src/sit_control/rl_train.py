@@ -104,6 +104,17 @@ def train(
         from stable_baselines3.common.env_util import make_vec_env
 
         vec_env = make_vec_env(env_fn, n_envs=train_cfg.n_envs, seed=train_cfg.seed)
+        # Reward normalization is essential here: the raw reward is O(1e5)
+        # (total mosquitoes released + terminal penalty), which the value
+        # function cannot fit (value_loss ~1e9, explained_variance ~0) and
+        # makes PPO diverge. VecNormalize rescales the reward to O(1) using a
+        # running estimate of the return std. norm_obs=False because the
+        # observation is already normalized inside the env (F/F_bar, Ms/scale,
+        # t/T), so evaluation needs no normalization stats.
+        from stable_baselines3.common.vec_env import VecNormalize
+        vec_env = VecNormalize(
+            vec_env, norm_obs=False, norm_reward=True, gamma=0.99,
+        )
         policy_kwargs = train_cfg.policy_kwargs or {"net_arch": [64, 64, 64]}
         model = PPO(
             "MlpPolicy",
