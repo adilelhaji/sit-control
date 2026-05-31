@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -32,7 +33,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import minimize
 
-from sit_control.controls import constant_control, impulsive_control, interpolated_control
+from sit_control.bisection import build_formula9_trajectory, solve_by_bisection
+from sit_control.controls import (
+    constant_control,
+    impulsive_control,
+    interpolated_control,
+)
 from sit_control.metrics import cost_L1, suppression_time
 from sit_control.optimizer import GekkoOptimiser, OptimisationResult
 from sit_control.parameters import (
@@ -133,14 +139,38 @@ def run_strategy_1(
     optimiser: GekkoOptimiser,
     cfg: ControlConfig,
 ) -> tuple[OptimisationResult, dict[str, Any]]:
-    """Strategy 1: continuous optimal L^1 (Section 4.1)."""
-    logger.info("Strategy 1 — L1 optimal | T=%g, U_max=%g", cfg.T, cfg.U_max)
+    """Strategy 1: continuous optimal L^1 via bisection (Section 4.1).
+
+    Uses the structural optimum — bisection on the singular-arc duration
+    (Almeida 2022, Algorithm 2) — instead of the GEKKO local minimum, so the
+    reported cost is the true global optimum and coherent with Chapter 3.
+    Valid for T > T* (singular structure); for short horizons T < T* the
+    bisection does not apply.
+    """
+    params = optimiser.params
+    logger.info("Strategy 1 — L1 optimal (bisection) | T=%g, U_max=%g", cfg.T, cfg.U_max)
     t0 = time.perf_counter()
-    result = optimiser.solve_L1(cfg)
+    bis = solve_by_bisection(params, cfg)
+    t, F, u = build_formula9_trajectory(params, cfg, bis, optimiser.num_config)
     wall = time.perf_counter() - t0
-    eps = _epsilon(optimiser.params, cfg)
-    m = _metrics(result.t, result.F_opt, result.u_opt, optimiser.params, eps, wall)
-    m["converged"] = result.converged
+    result = OptimisationResult(
+        t=t,
+        u_opt=u,
+        F_opt=F,
+        Ms_opt=np.zeros_like(F),
+        cost=float(np.trapezoid(u, t)),
+        wall_time=wall,
+        converged=bis.converged,
+    )
+    eps = _epsilon(params, cfg)
+    m = _metrics(result.t, result.F_opt, result.u_opt, params, eps, wall)
+    m.update({
+        "converged": bis.converged,
+        "method": "bisection",
+        "tau1_days": bis.tau1,
+        "t0_days": bis.t0,
+        "t1_days": bis.t1,
+    })
     return result, m
 
 
@@ -248,7 +278,11 @@ def run_strategy_5(
     eps = _epsilon(params, cfg)
     times = np.arange(0.0, cfg.T, tau)
     N = len(times)
-    max_per_pulse = cfg.U_max * pulse_duration
+    # Per-batch cap = full-period release budget (U_max sustained over tau),
+    # not U_max * pulse_duration. The latter (≈2500) is far too small to ever
+    # suppress and leaves the problem infeasible; U_max * tau (≈35000) lets
+    # each batch carry a meaningful dose, matching Chapter 3's release budget.
+    max_per_pulse = cfg.U_max * tau
 
     # Uniform initial guess — start from a feasible region (over-estimate)
     if J_initial_guess is None:
@@ -277,7 +311,11 @@ def run_strategy_5(
         method="SLSQP",
         bounds=[(0.0, max_per_pulse)] * N,
         constraints={"type": "ineq", "fun": lambda c: eps - _F_terminal(c)},
-        options={"maxiter": maxiter, "ftol": 1e-6, "disp": False},
+        # eps=1.0: finite-difference step for the gradient. The default
+        # (~1.5e-8) is far below the batch scale (1e4) and yields a zero
+        # numerical gradient; a step of 1 individual recovers usable
+        # sensitivities and gives F(T)=ε exactly (feasible).
+        options={"maxiter": maxiter, "ftol": 1e-6, "eps": 1.0, "disp": False},
     )
     wall = time.perf_counter() - t_start
 
@@ -328,6 +366,12 @@ def _print_summary(
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # Ensure non-ASCII summary glyphs (ε, F̄) print on consoles whose default
+    # encoding is not UTF-8 (e.g. Windows cp1252), which otherwise crashes.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True,
                         help="YAML configuration file")
