@@ -19,7 +19,7 @@ from collections import defaultdict
 from pathlib import Path
 from statistics import mean, pstdev
 
-TAG_RE = re.compile(r"^(tp\d+_ts\d+M_lr[a-z]+)_s(\d+)$")
+TAG_RE = re.compile(r"^(tp\d+_ts\d+M_lr[a-z]+(?:_ent[0-9.]+)?)_s(\d+)$")
 
 
 def _load(p: Path) -> dict | None:
