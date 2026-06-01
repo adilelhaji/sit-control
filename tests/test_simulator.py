@@ -98,6 +98,35 @@ def test_custom_initial_state(simulator: Simulator) -> None:
     np.testing.assert_allclose(result.state[:, 0], initial, rtol=1e-6)
 
 
+def test_invalid_T_raises(simulator: Simulator) -> None:
+    """A non-positive horizon should raise ValueError."""
+    with pytest.raises(ValueError, match="T must be positive"):
+        simulator.simulate(T=0.0, u_func=zero_control(), model="S1")
+
+
+def test_max_step_captures_isolated_pulse() -> None:
+    """A single narrow pulse late in a flat horizon must be integrated.
+
+    Without bounding the step, adaptive RK45 can stride over an isolated
+    0.5-day pulse and miss it. NumericalConfig.max_step makes the release
+    verifiable. Ms obeys dMs/dt = u - delta_s*Ms (decoupled from F), so the
+    exact post-pulse value is known analytically.
+    """
+    from sit_control.controls import impulsive_control
+
+    params = BiologicalParameters()
+    ds = params.delta_s
+    T, start, dur, amount = 150.0, 120.0, 0.5, 1000.0
+    rate = amount / dur
+    Ms_at_pulse_end = (rate / ds) * (1.0 - np.exp(-ds * dur))
+    Ms_true = Ms_at_pulse_end * np.exp(-ds * (T - (start + dur)))
+
+    u = impulsive_control(np.array([start]), amount=amount, duration=dur)
+    sim = Simulator(params, NumericalConfig(max_step=dur / 2))
+    result = sim.simulate(T=T, u_func=u, model="S1")
+    assert result.state[1, -1] == pytest.approx(Ms_true, rel=1e-2)
+
+
 def test_solver_tolerances_respected() -> None:
     """Tighter tolerances should produce smaller equilibrium drift."""
     params = BiologicalParameters()

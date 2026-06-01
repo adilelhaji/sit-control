@@ -90,12 +90,16 @@ class BiologicalParameters:
     def __post_init__(self) -> None:
         """Validate parameter values on construction."""
         for name in ("beta_E", "delta_E", "delta_M", "delta_F",
-                    "delta_s", "nu_E", "gamma_s", "K"):
+                    "delta_s", "nu_E", "K"):
             value = getattr(self, name)
             if value <= 0:
                 raise ValueError(f"{name} must be positive, got {value}")
         if not 0 < self.nu < 1:
             raise ValueError(f"nu must be in (0, 1), got {self.nu}")
+        if not 0 < self.gamma_s <= 1:
+            raise ValueError(
+                f"gamma_s must be in (0, 1], got {self.gamma_s}"
+            )
 
     @classmethod
     def almeida2022(cls, **overrides: float) -> "BiologicalParameters":
@@ -196,6 +200,11 @@ class NumericalConfig:
     solver_method: str = "RK45"
     apopt_rtol: float = 1e-6
     gekko_solver: int = 1  # 1=APOPT, 3=IPOPT
+    #: Maximum internal integration step for solve_ivp. Defaults to inf
+    #: (unbounded, SciPy default). Set it to <= pulse_width/2 for
+    #: discontinuous controls (impulsive/periodic releases) so the adaptive
+    #: RK45 step cannot skip a narrow pulse; see Simulator.simulate.
+    max_step: float = float("inf")
 
 
 def load_config(path: Path | str) -> dict[str, Any]:

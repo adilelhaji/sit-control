@@ -86,3 +86,10 @@ def test_nu_out_of_range_rejected() -> None:
     """nu must lie in the open interval (0, 1)."""
     with pytest.raises(ValueError, match="nu must be in"):
         BiologicalParameters(nu=1.5)
+
+
+def test_gamma_s_out_of_range_rejected() -> None:
+    """gamma_s must lie in (0, 1]: a sterile male cannot be more competitive
+    than a wild one in this model (Ch. 2)."""
+    with pytest.raises(ValueError, match=r"gamma_s must be in \(0, 1\]"):
+        BiologicalParameters(gamma_s=1.5)

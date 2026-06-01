@@ -43,14 +43,23 @@ def impulsive_control(
     Approximates Dirac releases by rectangular pulses of finite width
     `duration`, so that the total amount per pulse is `amount`.
 
+    Pulses are assumed disjoint: `duration` must not exceed the smallest
+    gap between consecutive `times`. If two windows overlap, the rate of
+    the first matching window is returned (rates are not summed).
+
     Args:
         times: Array of pulse start times.
         amount: Total individuals released per pulse.
-        duration: Width of each rectangular pulse in days.
+        duration: Width of each rectangular pulse in days (must be > 0).
 
     Returns:
         Callable t -> u(t).
+
+    Raises:
+        ValueError: If duration <= 0.
     """
+    if duration <= 0:
+        raise ValueError(f"duration must be positive, got {duration}")
     rate = amount / duration
     times = np.asarray(times, dtype=np.float64)
 

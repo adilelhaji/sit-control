@@ -85,12 +85,22 @@ class Simulator:
         Returns:
             SimulationResult with the integrated trajectories.
 
+        Note:
+            The adaptive RK45 step is unbounded by default. For discontinuous
+            controls (narrow impulsive/periodic pulses), set
+            NumericalConfig.max_step <= pulse_width / 2 so the solver cannot
+            step over an isolated pulse. Frequent pulses keep the step small
+            on their own, but a single isolated pulse can otherwise be missed.
+
         Raises:
-            ValueError: If the model identifier is invalid.
+            ValueError: If the model identifier is invalid or if T <= 0.
             RuntimeError: If the integrator fails to converge.
         """
         if model not in ("S1", "S2"):
             raise ValueError(f"Unknown model '{model}'; use 'S1' or 'S2'.")
+
+        if T <= 0:
+            raise ValueError(f"T must be positive, got {T}")
 
         if initial_state is None:
             initial_state = self._default_initial_state(model)
@@ -118,6 +128,7 @@ class Simulator:
             args=rhs_args,
             rtol=self.config.rtol,
             atol=self.config.atol,
+            max_step=self.config.max_step,
         )
 
         if not sol.success:
