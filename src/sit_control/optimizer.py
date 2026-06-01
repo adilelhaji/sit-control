@@ -145,12 +145,13 @@ class GekkoOptimiser:
         m.Minimize(m.integral(u))
 
         # Solver configuration
-        # RTOL here is the NLP convergence tolerance for APOPT (not ODE rtol).
-        # Almeida et al. (2022) use 1e-6; stored separately as apopt_rtol.
+        # RTOL/OTOL here are the NLP convergence tolerances for APOPT (not the
+        # ODE rtol). Almeida et al. (2022) use 1e-6; both are driven by the
+        # documented apopt_rtol knob so no convergence tolerance is hidden.
         m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
         m.options.IMODE = 6   # Dynamic optimal control
         m.options.RTOL = self.num_config.apopt_rtol
-        m.options.OTOL = 1e-6
+        m.options.OTOL = self.num_config.apopt_rtol  # objective tol (same knob)
 
         t_start = time.perf_counter()
         try:
@@ -251,7 +252,7 @@ class GekkoOptimiser:
         m.options.SOLVER = self.num_config.gekko_solver
         m.options.IMODE = 6
         m.options.RTOL = self.num_config.apopt_rtol
-        m.options.OTOL = 1e-6
+        m.options.OTOL = self.num_config.apopt_rtol  # objective tol (same knob)
 
         t_start = time.perf_counter()
         try:
@@ -386,7 +387,7 @@ class GekkoOptimiser:
         m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
         m.options.IMODE = 6    # Dynamic optimal control
         m.options.RTOL = self.num_config.apopt_rtol
-        m.options.OTOL = 1e-6
+        m.options.OTOL = self.num_config.apopt_rtol  # objective tol (same knob)
 
         t_start = time.perf_counter()
         try:

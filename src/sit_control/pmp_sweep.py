@@ -1,18 +1,29 @@
-"""Forward-Backward Sweep (PMP) solver for the L1 SIT optimal control problem.
+"""Forward-Backward Sweep (FBS) contrast solver for the L1 SIT problem.
 
-Implements the iterative Pontryagin Maximum Principle method used by Almeida
-et al. (2022) to numerically verify the analytical structure of u*(t):
+This is the classic bang-bang Forward-Backward Sweep (Lenhart & Workman,
+2007), used here as an *independent qualitative contrast method*:
   1. Forward sweep  : integrate (F, Ms) on [0, T] with current u(t)
   2. Backward sweep : integrate (λ₁, λ₂) on [T, 0] with terminal values
-  3. Control update : u_new = U_max  if σ = 1 + λ₂ < 0
-                              0      otherwise
+  3. Control update : u_new = U_max  if σ = 1 + λ₂ < 0, else 0  (bang-bang)
   4. Blend          : u ← α·u_new + (1-α)·u  (dampens bang-bang chattering)
   5. Repeat until ||Δu||_∞ < tol
 
-Terminal constraint F(T) ≤ ε is enforced via a quadratic penalty on λ₁(T):
-    λ₁(T) = M · max(0, F(T) − ε)
-This is a standard augmented-Lagrangian approach; M = 1e4 is sufficient for
-the tolerance levels used here.
+IMPORTANT — approximate method, NOT the authoritative solver. The control
+update is purely bang-bang and has no singular branch, so it CANNOT
+reproduce the bang-singular-bang structure of the L1 optimum. For horizons
+in the singular regime (T ≥ T* ≈ 104 d in the reference case) the control
+chatters in the singular arc, the sweep does NOT converge, and the returned
+cost J is method-dependent (it varies with α and overestimates the
+optimum). The authoritative optimal solver is
+``bisection.solve_by_bisection``, which builds the exact
+bang-singular-bang solution. Use this module only for qualitative
+cross-checking, never as the source of the reported optimal cost.
+
+The terminal constraint F(T) = ε is imposed through a *linear signed*
+multiplier on λ₁(T):  λ₁(T) = M · (F(T) − ε)  (no max(0,·); the sign drives
+F up or down toward the active equality). The PMP sign condition
+λ₁(T) ≥ 0 therefore holds only at the fixed point F(T) = ε, not during
+intermediate iterations.
 
 References:
     Lenhart, S. & Workman, J. T. (2007). Optimal Control Applied to
@@ -70,10 +81,13 @@ class FBSweepResult:
 
 
 class ForwardBackwardSweep:
-    """PMP-based iterative solver for the L1 SIT optimal control problem.
+    """Approximate bang-bang PMP solver (contrast method) for L1 SIT control.
 
-    Solves the same problem as GekkoOptimiser.solve_L1 but using the
-    Pontryagin Maximum Principle directly, without a general NLP solver.
+    Classic Forward-Backward Sweep (Lenhart & Workman, 2007). It does NOT
+    capture the singular arc of the L1 optimum and does not converge in the
+    singular regime (see the module docstring); it is kept only as an
+    independent qualitative cross-check. The authoritative optimal solver is
+    ``bisection.solve_by_bisection``.
     """
 
     def __init__(
@@ -204,13 +218,20 @@ class ForwardBackwardSweep:
             alpha: Blending weight for control update (0 < alpha ≤ 1).
                 Smaller values dampen chattering but slow convergence.
             tol: Convergence criterion: max||u_new − u||.
-            M_penalty: Penalty weight for terminal constraint F(T) ≤ ε.
-                Determines λ₁(T) = M·max(0, F(T)−ε).
+            M_penalty: Penalty weight for the terminal constraint F(T) = ε.
+                Sets the signed multiplier λ₁(T) = M·(F(T)−ε) (no max(0,·)).
             n_grid: Number of time points for the FBS discretisation.
 
         Returns:
-            FBSweepResult with optimal trajectories and diagnostics.
+            FBSweepResult with the (approximate) trajectories and diagnostics.
+            ``converged`` is typically False in the singular regime; the cost
+            is method-dependent and is not the optimal cost (use bisection).
+
+        Raises:
+            ValueError: If n_iter < 1.
         """
+        if n_iter < 1:
+            raise ValueError(f"n_iter must be >= 1, got {n_iter}")
         p = self.params
         cfg = control_config
         epsilon = cfg.epsilon if cfg.epsilon is not None else p.F_bar / 4.0

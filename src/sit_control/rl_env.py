@@ -84,7 +84,10 @@ class SITEnv(gym.Env):
     Reward
     ------
     - Step:     r_t = -u(t) * dt                            (linear cost)
-    - Terminal: r_T -= terminal_penalty * max(0, F(T) - epsilon)^2 / F_bar_nom^2
+    - Terminal: r_T -= terminal_penalty * (rel + rel^2) * (U_max * T),
+                with rel = max(0, F(T) - epsilon) / F_bar_nom
+                (hinge penalty: linear term keeps a non-zero gradient at the
+                 boundary, quadratic term adds curvature)
 
     Episode end
     -----------
