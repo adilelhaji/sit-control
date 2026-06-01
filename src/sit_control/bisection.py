@@ -186,6 +186,16 @@ def _simulate_singular_from_Fbar(
     """
     initial = np.array([params.F_bar, 0.0], dtype=np.float64)
 
+    # tau1 == 0: no singular arc. Return a single point at (F_bar, 0) instead
+    # of integrating an empty [0, 0] span, which yields an empty solution and
+    # an IndexError downstream.
+    if tau1 <= 0.0:
+        u0 = float(np.clip(
+            singular_control(params.F_bar, 0.0, params), 0.0, cfg.U_max
+        ))
+        return (np.array([0.0]), np.array([params.F_bar]),
+                np.array([0.0]), np.array([u0]))
+
     def _rhs(t: float, state: NDArray) -> NDArray:
         F_s  = float(max(state[0], 0.0))
         Ms_s = float(max(state[1], 0.0))

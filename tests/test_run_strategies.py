@@ -119,10 +119,11 @@ def test_strategy_3_pulse_count(
     simulator: Simulator,
     cfg: ControlConfig,
 ) -> None:
-    """Number of pulses should equal floor(T / tau)."""
+    """Number of pulses equals the count of release times k*tau in [0, T)
+    (releases at t=0, tau, 2*tau, ...), i.e. len(arange(0, T, tau))."""
     from scripts.run_strategies import run_strategy_3
     tau = 7.0
-    expected_pulses = int(np.floor(cfg.T / tau))
+    expected_pulses = len(np.arange(0.0, cfg.T, tau))
     _, m = run_strategy_3(simulator, cfg, J_reference=50_000.0, tau=tau)
     assert m["n_pulses"] == expected_pulses
 

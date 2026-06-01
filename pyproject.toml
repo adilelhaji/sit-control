@@ -48,3 +48,6 @@ disallow_untyped_defs = true
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "--cov=sit_control --cov-report=term-missing"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]

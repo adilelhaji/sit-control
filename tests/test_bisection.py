@@ -74,20 +74,15 @@ def test_singular_control_degenerate_curvature(
 # _simulate_with_tau1
 # ---------------------------------------------------------------------------
 
-def test_simulate_tau1_zero_is_pure_bangon(
+def test_simulate_tau1_zero_no_suppression(
     params: BiologicalParameters,
     cfg: ControlConfig,
     simulator: Simulator,
 ) -> None:
-    """tau1=0 means no singular arc; F_min equals that of a pure bang-on run."""
-    F_min_bisect = _simulate_with_tau1(params, cfg, tau1=0.0, simulator=simulator)
-    # Pure bang-on simulation for the full T
-    from sit_control.controls import constant_control
-    res = simulator.simulate(
-        T=cfg.T, u_func=constant_control(cfg.U_max), model="S1",
-    )
-    F_min_direct = float(np.min(res.state[0]))
-    assert abs(F_min_bisect - F_min_direct) / (F_min_direct + 1.0) < 1e-3
+    """tau1=0 means no singular arc, so no sterile males are ever released and
+    F stays at the persistence equilibrium F_bar."""
+    F_min = _simulate_with_tau1(params, cfg, tau1=0.0, simulator=simulator)
+    assert F_min == pytest.approx(params.F_bar, rel=1e-3)
 
 
 def test_simulate_tau1_full_T_no_bangon(
@@ -101,16 +96,17 @@ def test_simulate_tau1_full_T_no_bangon(
     assert 0.0 <= F_min <= params.F_bar
 
 
-def test_simulate_longer_bangon_lower_Fmin(
+def test_simulate_longer_tau1_lower_Fmin(
     params: BiologicalParameters,
     cfg: ControlConfig,
     simulator: Simulator,
 ) -> None:
-    """Shorter tau1 (more bang-on time) should give lower or equal F_min."""
+    """A longer singular arc (larger tau1) releases more sterile males and
+    therefore reaches a lower (or equal) F_min."""
     F_short = _simulate_with_tau1(params, cfg, tau1=20.0, simulator=simulator)
     F_long = _simulate_with_tau1(params, cfg, tau1=100.0, simulator=simulator)
-    # Shorter singular arc = longer bang-on = more aggressive = lower F_min.
-    assert F_short <= F_long + 10.0  # allow small numerical slack
+    # Longer singular arc = more suppression = lower F_min.
+    assert F_long <= F_short + 10.0  # allow small numerical slack
 
 
 def test_simulate_returns_nonnegative_Fmin(
