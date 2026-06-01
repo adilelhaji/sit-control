@@ -139,10 +139,13 @@ def test_bisection_t0_t1_consistent(
     params: BiologicalParameters,
     cfg: ControlConfig,
 ) -> None:
-    """t0 and t1 must satisfy 0 <= t0 <= T and t1 = T."""
+    """t0 and t1 are the singular-arc boundaries: 0 <= t0 <= t1 <= T.
+
+    t1 is the END of the singular arc (~144.1 d for T=150), after which the
+    control switches off until T; it is NOT the horizon T itself.
+    """
     result = solve_by_bisection(params, cfg, max_iterations=10, tolerance=50.0)
-    assert 0.0 <= result.t0 <= cfg.T
-    assert result.t1 == pytest.approx(cfg.T, abs=1e-9)
+    assert 0.0 <= result.t0 <= result.t1 <= cfg.T
 
 
 @pytest.mark.slow

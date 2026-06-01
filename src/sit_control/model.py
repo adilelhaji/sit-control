@@ -48,15 +48,22 @@ def recruitment(
         + p.delta_M * p.gamma_s * Ms * denom_E
     )
 
+    # The recruitment term has a removable singularity ONLY at (F, Ms) = (0, 0)
+    # (both numerator and denom -> 0, ratio -> 0). Use a RELATIVE threshold so a
+    # small-but-legitimate denominator (finite, well-defined ratio) is never
+    # discarded; the asymptotic limit -delta_F*F is applied only at the genuine
+    # singularity. In the operating regime denom is many orders above threshold,
+    # so this never fires and changes no result.
+    threshold = singular_eps * (1.0 + numerator)
     if np.isscalar(F):
-        if denom < singular_eps:
+        if denom < threshold:
             return -p.delta_F * F
         return numerator / denom - p.delta_F * F
 
     out = np.where(
-        denom < singular_eps,
+        denom < threshold,
         -p.delta_F * F,
-        np.divide(numerator, denom, where=denom >= singular_eps) - p.delta_F * F,
+        np.divide(numerator, denom, where=denom >= threshold) - p.delta_F * F,
     )
     return out
 
