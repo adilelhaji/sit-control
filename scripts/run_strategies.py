@@ -72,11 +72,19 @@ def _metrics(
     params: BiologicalParameters,
     epsilon: float,
     wall_time: float = 0.0,
+    j_l1: float | None = None,
 ) -> dict[str, Any]:
-    """Standard performance metrics for one strategy."""
+    """Standard performance metrics for one strategy.
+
+    For impulsive strategies pass ``j_l1`` = the sum of released amounts, which
+    is the exact integral of the rectangular-pulse control. The trapezoidal
+    integral of ``u`` sampled on the coarse output grid overestimates narrow
+    pulses (boundary effect, up to +2.4% for tau=14 d), so it must not be used
+    as the reported cost for impulsive strategies.
+    """
     t_eps = suppression_time(t, F, epsilon)
     return {
-        "J_L1": cost_L1(t, u),
+        "J_L1": cost_L1(t, u) if j_l1 is None else float(j_l1),
         "t_epsilon_days": t_eps,
         "F_T": float(F[-1]),
         "F_T_over_Fbar": float(F[-1]) / params.F_bar,
@@ -224,7 +232,12 @@ def run_strategy_3(
     )
     wall = time.perf_counter() - t0
     eps = _epsilon(simulator.params, cfg)
-    m = _metrics(result.t, result.state[0], result.control, simulator.params, eps, wall)
+    # Exact L1 cost = sum of released amounts (= J_reference by construction),
+    # not the trapezoid of u on the coarse grid (which overestimates pulses).
+    m = _metrics(
+        result.t, result.state[0], result.control, simulator.params, eps, wall,
+        j_l1=J_reference,
+    )
     m.update({"tau_days": tau, "n_pulses": int(len(times)), "amount_per_pulse": amount})
     return result, m
 
@@ -329,7 +342,12 @@ def run_strategy_5(
     u_func = _variable_impulsive_control(times, best, duration=pulse_duration)
     result = simulator.simulate(T=cfg.T, u_func=u_func, model="S1")
 
-    m = _metrics(result.t, result.state[0], result.control, params, eps, wall)
+    # Exact L1 cost = sum of optimised amounts (the SLSQP objective itself),
+    # not the trapezoid of u on the coarse grid.
+    m = _metrics(
+        result.t, result.state[0], result.control, params, eps, wall,
+        j_l1=float(np.sum(best)),
+    )
     m.update({
         "tau_days": tau,
         "n_pulses": N,
