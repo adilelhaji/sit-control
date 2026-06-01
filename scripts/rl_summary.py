@@ -52,14 +52,14 @@ def main(argv: list[str]) -> int:
         })
 
     if not rows:
-        print(f"No hay resultados evaluados bajo {root}")
+        print(f"No evaluated results found under {root}")
         return 1
 
     groups: dict[str, list[dict]] = defaultdict(list)
     for r in rows:
         groups[r["config"]].append(r)
 
-    print(f"\nSWEEP RL — resumen ({len(rows)} corridas, {len(groups)} configs)\n")
+    print(f"\nRL SWEEP — summary ({len(rows)} runs, {len(groups)} configs)\n")
     hdr = (f"{'config':28} {'n':>2} {'DRsucc_mean':>11} {'DRsucc_std':>10} "
            f"{'DRsucc_max':>10} {'nom100%':>8} {'DRcost_mean':>12} {'NOMcost_best':>12}")
     print(hdr)
@@ -80,7 +80,7 @@ def main(argv: list[str]) -> int:
 
     # best individual policy overall (by DR success, tie-break lower DR cost)
     best = max(rows, key=lambda r: (r["dr_succ"], -r["dr_cost"]))
-    print(f"\nMejor politica individual: {best['config']}_s{best['seed']}  "
+    print(f"\nBest individual policy: {best['config']}_s{best['seed']}  "
           f"DRsucc={best['dr_succ']:.3f}  DRcost={best['dr_cost']:.3e}  "
           f"NOMsucc={best['nom_succ']:.3f}  NOMcost={best['nom_cost']:.3e}")
 
@@ -90,7 +90,7 @@ def main(argv: list[str]) -> int:
         for r in sorted(rows, key=lambda r: (r["config"], r["seed"])):
             f.write(f"{r['config']},{r['seed']},{r['dr_succ']},{r['dr_cost']},"
                     f"{r['nom_succ']},{r['nom_cost']}\n")
-    print(f"\nDetalle por semilla: {csv}")
+    print(f"\nPer-seed detail: {csv}")
     return 0
 
 

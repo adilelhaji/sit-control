@@ -1,28 +1,29 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Sweep EXHAUSTIVO y desatendido de la Estrategia 9 (Deep RL).
+# EXHAUSTIVE, unattended sweep of Strategy 9 (Deep RL).
 #
-# Recorre el factorial completo de los hiperparametros clave de PPO, entrena
-# cada combinacion, la evalua (robustez +-30% DR y nominal) y escribe un
-# resumen agregado. Pensado para correr ~5-6 h con nohup y revisarse despues.
+# Iterates over the full factorial of the key PPO hyperparameters, trains
+# each combination, evaluates it (robustness +-30% DR and nominal) and writes
+# an aggregated summary. Designed to run ~5-6 h with nohup and be reviewed
+# afterwards.
 #
 #   cd ~/sit && git pull && poetry install -E rl && poetry run pip install rich tqdm
 #   nohup bash scripts/rl_sweep.sh > results/rl/sweep.out 2>&1 &
-#   # ... volver en ~6 h ...
+#   # ... come back in ~6 h ...
 #   cat results/rl/sweep/SUMMARY.txt
 #
-# Rejilla por defecto (200 corridas):
+# Default grid (200 runs):
 #   terminal_penalty : 2 3 4 6 8
 #   lr_schedule      : linear constant
 #   timesteps        : 1M 2M
 #   ent_coef         : 0.005 0.01
 #   seeds            : 0 1 2 3 4
-# Fijos: batch_size=256, n_envs=24, DR +-30%, epsilon fijo, net [64,64,64].
+# Fixed: batch_size=256, n_envs=24, DR +-30%, fixed epsilon, net [64,64,64].
 #
-# Variables de entorno para acotar/ampliar (todas opcionales):
+# Environment variables to narrow/widen the grid (all optional):
 #   MAXJOBS (def 9)   TPS  LRS  TSS  ENTS  SEEDS
-#   p.ej.  TSS="1000000" SEEDS="0 1 2"  bash scripts/rl_sweep.sh   (mas corto)
-# Reanudable: salta cualquier corrida cuyo modelo/evaluacion ya exista.
+#   e.g.  TSS="1000000" SEEDS="0 1 2"  bash scripts/rl_sweep.sh   (shorter)
+# Resumable: skips any run whose model/evaluation already exists.
 # ---------------------------------------------------------------------------
 set -u
 cd "$(dirname "$0")/.." || exit 1
@@ -63,33 +64,33 @@ eval_one () {
     --output "$out/eval_nom" > /dev/null 2>&1
 }
 
-# numero total de corridas
+# total number of runs
 N=0
 for tp in $TPS; do for ts in $TSS; do for lr in $LRS; do for ent in $ENTS; do for s in $SEEDS; do
   N=$((N+1)); done; done; done; done; done
 
-echo "############ SWEEP RL EXHAUSTIVO — inicio ############"
-echo "MAXJOBS=$MAXJOBS  total_corridas=$N"
+echo "############ EXHAUSTIVE RL SWEEP — start ############"
+echo "MAXJOBS=$MAXJOBS  total_runs=$N"
 echo "TPS=[$TPS] LRS=[$LRS] TSS=[$TSS] ENTS=[$ENTS] SEEDS=[$SEEDS]"
 date
 
-echo "==== FASE 1: ENTRENAMIENTO ($N corridas) ===="
+echo "==== PHASE 1: TRAINING ($N runs) ===="
 for tp in $TPS; do for ts in $TSS; do M=$((ts/1000000)); for lr in $LRS; do for ent in $ENTS; do for s in $SEEDS; do
   tag="tp${tp}_ts${M}M_lr${lr}_ent${ent}_s${s}"
   gate; train_one "$tag" "$tp" "$ts" "$lr" "$ent" "$s" &
 done; done; done; done; done
 wait
-echo "==== entrenamiento completo ===="; date
+echo "==== training complete ===="; date
 
-echo "==== FASE 2: EVALUACION ===="
+echo "==== PHASE 2: EVALUATION ===="
 for d in "$ROOT"/*/; do
   d=${d%/}
   gate; eval_one "$d" &
 done
 wait
-echo "==== evaluacion completa ===="; date
+echo "==== evaluation complete ===="; date
 
-echo "==== FASE 3: RESUMEN ===="
+echo "==== PHASE 3: SUMMARY ===="
 poetry run python scripts/rl_summary.py "$ROOT" | tee "$ROOT/SUMMARY.txt"
-echo "############ SWEEP RL — fin. Resumen: $ROOT/SUMMARY.txt ############"
+echo "############ RL SWEEP — done. Summary: $ROOT/SUMMARY.txt ############"
 date

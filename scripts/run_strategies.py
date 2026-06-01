@@ -354,7 +354,7 @@ def _print_summary(
     epsilon: float,
 ) -> None:
     col = 36
-    header = f"{'Estrategia':<{col}} {'J (total)':>12} {'t_ε (días)':>12} {'F(T)/F̄':>10}"
+    header = f"{'Strategy':<{col}} {'J (total)':>12} {'t_ε (days)':>12} {'F(T)/F̄':>10}"
     sep = "=" * len(header)
     print(f"\n{sep}\n{header}\n{'-' * len(header)}")
     for key, m in meta.items():
@@ -420,32 +420,32 @@ def main() -> None:
     # ---- Strategy 1 -------------------------------------------------------
     opt1, m1 = run_strategy_1(optimiser, control_cfg)
     all_metrics["strategy_1_L1_optimal"] = m1
-    plot_sims["Óptima $L^1$"] = _opt_to_sim(opt1, simulator, control_cfg)
+    plot_sims["Optimal $L^1$"] = _opt_to_sim(opt1, simulator, control_cfg)
     J_ref = m1["J_L1"]
 
     # ---- Strategy 2 -------------------------------------------------------
     sim2, m2 = run_strategy_2(simulator, control_cfg, J_ref)
     all_metrics["strategy_2_constant"] = m2
-    plot_sims["Constante"] = sim2
+    plot_sims["Constant"] = sim2
 
     # ---- Strategy 3 -------------------------------------------------------
     for tau in args.tau_values:
         sim3, m3 = run_strategy_3(simulator, control_cfg, J_ref, tau)
         key = f"strategy_3_impulsive_tau{int(tau)}d"
         all_metrics[key] = m3
-        plot_sims[rf"Periódica $\tau$={int(tau)}d"] = sim3
+        plot_sims[rf"Periodic $\tau$={int(tau)}d"] = sim3
 
     # ---- Strategy 4 -------------------------------------------------------
     opt4, m4 = run_strategy_4(optimiser, control_cfg, c_weight=args.c_weight)
     all_metrics["strategy_4_L2_optimal"] = m4
-    plot_sims["Óptima $L^2$"] = _opt_to_sim(opt4, simulator, control_cfg)
+    plot_sims["Optimal $L^2$"] = _opt_to_sim(opt4, simulator, control_cfg)
 
     # ---- Strategy 5 -------------------------------------------------------
     sim5, m5 = run_strategy_5(
         simulator, control_cfg, tau=args.tau_optimal, J_initial_guess=J_ref,
     )
     all_metrics[f"strategy_5_impulsive_optimal_tau{int(args.tau_optimal)}d"] = m5
-    plot_sims[rf"Impulsiva óptima $\tau$={int(args.tau_optimal)}d"] = sim5
+    plot_sims[rf"Optimal impulsive $\tau$={int(args.tau_optimal)}d"] = sim5
 
     # ---- Persist metrics --------------------------------------------------
     out_json = args.output / "strategies_metrics.json"
@@ -461,7 +461,7 @@ def main() -> None:
         epsilon=eps,
         save_path=args.output / "fig_comparison.pdf",
         state_index=0,
-        state_label=r"Hembras $F(t)$",
+        state_label=r"Females $F(t)$",
     )
     plt.close(fig)
     logger.info("Comparison figure saved → %s", args.output / "fig_comparison.pdf")

@@ -82,15 +82,15 @@ def main() -> int:
     yerr = [pstdev(agg[tp]["s"]) for tp in tps]
     fig1, ax = plt.subplots(figsize=(7, 5))
     ax.errorbar(xs, ys, yerr=yerr, fmt="o-", color="#1f77b4", capsize=4, ms=7,
-                lw=1.5, label="Política RL (PPO, ±30 % DR)")
+                lw=1.5, label="RL policy (PPO, ±30 % DR)")
     for tp, x, y in zip(tps, xs, ys):
         ax.annotate(f"  tp={tp}", (x, y), fontsize=9, va="center")
     ax.axvline(J_a / 1e5, ls="--", color="crimson", lw=1.3)
-    ax.text(J_a / 1e5 + 0.03, 18, "óptimo Almeida\n(lazo abierto, frágil)",
+    ax.text(J_a / 1e5 + 0.03, 18, "Almeida optimum\n(open-loop, fragile)",
             color="crimson", fontsize=9)
-    ax.set_xlabel(r"Coste medio $J$ bajo $\pm30\%$  [$\times10^5$ mosquitos]")
-    ax.set_ylabel(r"Tasa de éxito bajo $\pm30\%$  [\%]")
-    ax.set_title("Compromiso coste–robustez de la política RL")
+    ax.set_xlabel(r"Mean cost $J$ under $\pm30\%$  [$\times10^5$ mosquitoes]")
+    ax.set_ylabel(r"Success rate under $\pm30\%$  [\%]")
+    ax.set_title("Cost–robustness trade-off of the RL policy")
     ax.set_ylim(0, 100)
     ax.legend(loc="lower right")
     fig1.tight_layout()
@@ -103,27 +103,27 @@ def main() -> int:
         if not roll.exists():
             roll = a.sweep / f"rollout_tp8_s{s}.json"  # fallback name
         j = json.loads(roll.read_text(encoding="utf-8"))
-        lbl = "Política RL (3 semillas)" if i == 0 else None
+        lbl = "RL policy (3 seeds)" if i == 0 else None
         a1.plot(j["t"], j["F"], color="#1f77b4", alpha=0.7, lw=1.2, label=lbl)
         a2.plot(j["t"], j["u"], color="#1f77b4", alpha=0.7, lw=1.2, label=lbl)
     a1.plot(t_a, F_a, color="crimson", ls="--", lw=1.8,
-            label="Óptimo Almeida (lazo abierto)")
+            label="Almeida optimum (open-loop)")
     a2.plot(t_a, u_a, color="crimson", ls="--", lw=1.8,
-            label="Óptimo Almeida (lazo abierto)")
+            label="Almeida optimum (open-loop)")
     a1.axhline(eps, ls=":", color="grey")
     a1.text(3, eps * 1.25, r"$\varepsilon=\bar F/4$", color="grey", fontsize=9)
-    a1.set_xlabel("t (días)")
-    a1.set_ylabel(r"Hembras $F(t)$")
-    a1.set_title("Estado")
+    a1.set_xlabel("t (days)")
+    a1.set_ylabel(r"Females $F(t)$")
+    a1.set_title("State")
     a1.legend(fontsize=9)
-    a2.set_xlabel("t (días)")
+    a2.set_xlabel("t (days)")
     a2.set_ylabel(r"Control $u(t)$")
     a2.set_title("Control")
     a2.legend(fontsize=9)
-    fig2.suptitle("Política RL en lazo cerrado (tp=8) frente al óptimo en lazo abierto")
+    fig2.suptitle("Closed-loop RL policy (tp=8) vs the open-loop optimum")
     fig2.tight_layout()
     fig2.savefig(a.out / "fig_rl_policy.pdf", bbox_inches="tight")
-    print(f"Figuras guardadas en {a.out}  (Almeida J={J_a:.3e})")
+    print(f"Figures saved to {a.out}  (Almeida J={J_a:.3e})")
     return 0
 
 

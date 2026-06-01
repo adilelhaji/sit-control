@@ -283,12 +283,12 @@ def _print_summary(sensitivity: dict[str, Any]) -> None:
 
     col = 12
     header = (
-        f"{'Parámetro':<14} {'Nivel':>6}  "
+        f"{'Parameter':<14} {'Level':>6}  "
         f"{'J_L1':>{col}}  {'t_ε (d)':>{col}}  {'ΔJ/J₀ (%)':>{col}}"
     )
     sep = "=" * len(header)
     print(f"\n{sep}")
-    print(f"{'Línea base':<14} {'':>6}  {J0:>{col}.4e}  {t0_str:>{col}}  {'0.00':>{col}}")
+    print(f"{'Baseline':<14} {'':>6}  {J0:>{col}.4e}  {t0_str:>{col}}  {'0.00':>{col}}")
     print(f"{'-' * len(header)}")
     print(header)
     print(f"{'-' * len(header)}")

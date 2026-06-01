@@ -71,11 +71,25 @@ def _cost_from_bisection(
     bis_result: BisectionResult,
     num: NumericalConfig,
 ) -> float:
-    """Compute J* = integral of u_sing on [t0, T] from a bisection result."""
+    """Compute J* = integral of u* on [0, T] from a bisection result.
+
+    For T > T_opt the optimal control of Almeida et al. (2022),
+    Theorem 3.3 has three phases (formula 9):
+
+        u*(t) = 0          on [0, t0]
+        u*(t) = u_sing     on [t0, t1]   with t1 = t0 + tau1
+        u*(t) = 0          on [t1, T]
+
+    Phases 1 and 3 contribute zero to the integral, so the cost
+    reduces to integrating u_sing only on the singular arc
+    [t0, t1]. Earlier versions of this routine integrated up to T,
+    which inflated the cost by the phantom singular-control values
+    on [t1, T] (where the true optimal control is identically zero).
+    """
     from scipy.integrate import solve_ivp
 
-    T = cfg.T
     t0 = bis_result.t0
+    t1 = bis_result.t1
     initial = np.array([params.F_bar, 0.0], dtype=np.float64)
 
     state_t0 = initial.copy()
@@ -97,9 +111,9 @@ def _cost_from_bisection(
         return np.array([dF, dMs], dtype=np.float64)
 
     n_eval = max(500, int(bis_result.tau1 * 10))
-    sol = solve_ivp(fun=_rhs, t_span=(t0, T),
+    sol = solve_ivp(fun=_rhs, t_span=(t0, t1),
                     y0=state_t0, method=num.solver_method,
-                    t_eval=np.linspace(t0, T, n_eval),
+                    t_eval=np.linspace(t0, t1, n_eval),
                     rtol=num.rtol, atol=num.atol)
 
     u_grid = np.array([
