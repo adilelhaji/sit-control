@@ -86,6 +86,7 @@ def evaluate_policy(
     env = SITEnv(nominal_params, control_config, rl_config)
     costs: list[float] = []
     F_terminals: list[float] = []
+    epsilons: list[float] = []
     sampled: list[dict[str, float]] = []
 
     for episode in range(n_episodes):
@@ -104,9 +105,16 @@ def evaluate_policy(
 
         costs.append(env.cumulative_cost)
         F_terminals.append(info["F"])
+        # Capture this episode's threshold now: with fixed_epsilon=False each
+        # episode has its own epsilon (= perturbed F_bar / 4), and env.params
+        # still holds this episode's parameters until the next reset(). Each
+        # F(T) must be judged against the epsilon it was actually run under.
+        epsilons.append(float(env.epsilon))
 
-    epsilon = env.epsilon
-    success_rate = float(np.mean([F <= epsilon for F in F_terminals]))
+    success_rate = float(
+        np.mean([F <= e for F, e in zip(F_terminals, epsilons)])
+    )
+    epsilon = float(np.mean(epsilons))
 
     return EvaluationResult(
         n_episodes=n_episodes,

@@ -50,7 +50,8 @@ class RLConfig:
         four parameters identified as most influential in the sensitivity
         analysis (Strategy 8): beta_E, delta_F, nu_E, K.
     terminal_penalty
-        Multiplier of the squared excess (F(T) - epsilon)^2 in the terminal
+        Multiplier of the terminal hinge penalty (rel + rel^2), with
+        rel = max(0, F(T) - epsilon) / F_bar_nom, scaled by U_max * T in the
         reward. Larger values push the agent harder towards feasibility.
     fixed_epsilon
         If True, the suppression threshold epsilon is computed from the
