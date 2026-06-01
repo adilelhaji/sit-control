@@ -1,5 +1,8 @@
-# Configuration replicating Almeida et al. (2022), Table 1.
-# Aedes polynesiensis, 74 ha island in French Polynesia.
+# Canonical configuration reproducing Almeida et al. (2022) numerical
+# experiments. K is calibrated from the published F_bar=11037 (Tables 2-4
+# of the article); see src/sit_control/parameters.py for the derivation.
+# This is the reference configuration for the verification section of
+# Chapter 3 of the TFG report.
 
 biological:
   beta_E: 10.0
@@ -10,7 +13,7 @@ biological:
   nu_E: 0.05
   nu: 0.49
   gamma_s: 1.0
-  K: 22200.0
+  K: 18258.0  # calibrated from F_bar=11037 (Almeida 2022, Tables 2-4)
 
 control:
   T: 150.0

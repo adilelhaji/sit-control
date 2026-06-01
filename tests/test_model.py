@@ -21,8 +21,14 @@ def test_R0_value(almeida_params: BiologicalParameters) -> None:
 
 
 def test_F_bar_value(almeida_params: BiologicalParameters) -> None:
-    """Persistence equilibrium F_bar should be ~11037 (Almeida 2022)."""
-    assert almeida_params.F_bar == pytest.approx(11037.0, rel=1e-2)
+    """Persistence equilibrium F_bar should be 11037 (Almeida 2022, Tables 2-4).
+
+    This is the cross-paper invariant: with K = K_ALMEIDA_2022 = 18258,
+    the model must reproduce the F_bar explicitly reported in Almeida
+    (2022) Tables 2, 3 and 4. A failure here would mean the default K
+    has been changed without updating the reference.
+    """
+    assert almeida_params.F_bar == pytest.approx(11037.0, abs=2.0)
 
 
 def test_recruitment_at_origin(almeida_params: BiologicalParameters) -> None:
