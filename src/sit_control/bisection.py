@@ -84,16 +84,14 @@ def singular_control(
 
 
 def _compute_f(F: float, Ms: float, p: BiologicalParameters) -> float:
-    """Internal: value of the recruitment f at (F, M_s)."""
-    denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
-    numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
-    denom = denom_E * (
-        (1.0 - p.nu) * p.nu_E * p.beta_E * F
-        + p.delta_M * p.gamma_s * Ms * denom_E
-    )
-    if denom < 1e-12:
-        return -p.delta_F * F
-    return numerator / denom - p.delta_F * F
+    """Internal: value of the recruitment f at (F, M_s).
+
+    Thin wrapper around :func:`model.recruitment` so the closed form of f lives
+    in a single place (model.py) and cannot drift between modules. Kept as a
+    module-local name for readability in the singular-control formula and for
+    the partial-derivative regression tests.
+    """
+    return float(recruitment(F, Ms, p))
 
 
 def _compute_partials(

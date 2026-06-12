@@ -8,6 +8,7 @@ import pytest
 from sit_control.bisection import (
     BisectionResult,
     _compute_f,
+    _compute_partials,
     _simulate_with_tau1,
     singular_control,
     solve_by_bisection,
@@ -172,3 +173,87 @@ def test_bisection_Fmin_near_epsilon(
     )
     if result.converged:
         assert abs(result.F_min - epsilon) < 200.0  # 200 females slack
+
+
+# ---------------------------------------------------------------------------
+# _compute_partials — analytical derivatives vs finite differences
+# ---------------------------------------------------------------------------
+#
+# The singular control u_sing is built from the four analytical partials of f
+# (df/dF, df/dMs, d2f/dMs2, d2f/dMsdF) derived by hand in _compute_partials.
+# A transcription slip in any of them would silently corrupt the whole
+# bang-singular-bang solution. These tests pin each partial against a central
+# finite difference so such a regression fails loudly.
+
+# Interior evaluation points (Ms > 0 to stay clear of the Ms=0 boundary clamp).
+_PARTIAL_POINTS = [
+    (8000.0, 5000.0),
+    (3000.0, 20000.0),
+    (5000.0, 1000.0),
+    (11000.0, 2000.0),
+]
+
+
+def _central(g, x, h):
+    """Central finite difference of a scalar function g at x with step h."""
+    return (g(x + h) - g(x - h)) / (2.0 * h)
+
+
+@pytest.mark.parametrize("F, Ms", _PARTIAL_POINTS)
+def test_compute_partials_match_finite_differences(
+    params: BiologicalParameters, F: float, Ms: float,
+) -> None:
+    """The four analytical partials must match central finite differences.
+
+    df/dF and df/dMs are checked against finite differences of f itself;
+    d2f/dMs2 and d2f/dMsdF against finite differences of the (already
+    validated) analytical df/dMs.
+    """
+    df_dF, df_dMs, d2f_dMs2, d2f_dMsdF = _compute_partials(F, Ms, params)
+
+    hF = F * 1e-6
+    hM = Ms * 1e-6
+
+    fd_df_dF = _central(lambda x: _compute_f(x, Ms, params), F, hF)
+    fd_df_dMs = _central(lambda x: _compute_f(F, x, params), Ms, hM)
+    fd_d2f_dMs2 = _central(
+        lambda x: _compute_partials(F, x, params)[1], Ms, hM
+    )
+    fd_d2f_dMsdF = _central(
+        lambda x: _compute_partials(x, Ms, params)[1], F, hF
+    )
+
+    assert df_dF == pytest.approx(fd_df_dF, rel=1e-4)
+    assert df_dMs == pytest.approx(fd_df_dMs, rel=1e-4)
+    assert d2f_dMs2 == pytest.approx(fd_d2f_dMs2, rel=1e-3)
+    assert d2f_dMsdF == pytest.approx(fd_d2f_dMsdF, rel=1e-3)
+
+
+def test_compute_partials_d2f_dMsdF_zero_at_Ms_zero(
+    params: BiologicalParameters,
+) -> None:
+    """At Ms=0, df/dMs is independent of F, so d2f/dMsdF must vanish exactly.
+
+    (df/dMs(F, 0) = -nu*delta_M*gamma_s/(1-nu), a constant in F.) This edge
+    case is where a sign/term error in the cross-partial would most easily
+    hide, so it is pinned explicitly.
+    """
+    _, _, _, d2f_dMsdF = _compute_partials(8000.0, 0.0, params)
+    assert d2f_dMsdF == pytest.approx(0.0, abs=1e-12)
+
+
+def test_singular_control_matches_partials_formula(
+    params: BiologicalParameters,
+) -> None:
+    """singular_control must equal the closed-form combination of the partials.
+
+    u_sing = (df/dMs * df/dF + d2f/dMs2 * delta_s * Ms - d2f/dMsdF * f)
+             / d2f/dMs2   (Almeida 2022, eq. 7).
+    """
+    F, Ms = 6000.0, 3000.0
+    df_dF, df_dMs, d2f_dMs2, d2f_dMsdF = _compute_partials(F, Ms, params)
+    f_val = _compute_f(F, Ms, params)
+    expected = (
+        df_dMs * df_dF + d2f_dMs2 * params.delta_s * Ms - d2f_dMsdF * f_val
+    ) / d2f_dMs2
+    assert singular_control(F, Ms, params) == pytest.approx(expected, rel=1e-12)

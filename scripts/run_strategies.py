@@ -25,6 +25,7 @@ import json
 import logging
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -224,10 +225,18 @@ def run_strategy_3(
         "Strategy 3 — impulsive | tau=%.0f d, %d pulses, c=%.1f each",
         tau, len(times), amount,
     )
+    pulse_duration = 0.5
+    # Cap the integrator step to half the pulse width so the adaptive RK45
+    # cannot under-resolve the narrow pulses (the default max_step=inf can step
+    # over them, see Strategy 6).
+    capped_sim = Simulator(
+        simulator.params,
+        replace(simulator.config, max_step=pulse_duration / 2.0),
+    )
     t0 = time.perf_counter()
-    result = simulator.simulate(
+    result = capped_sim.simulate(
         T=cfg.T,
-        u_func=impulsive_control(times, amount),
+        u_func=impulsive_control(times, amount, duration=pulse_duration),
         model="S1",
     )
     wall = time.perf_counter() - t0
@@ -303,6 +312,12 @@ def run_strategy_5(
     # each batch carry a meaningful dose, matching Chapter 3's release budget.
     max_per_pulse = cfg.U_max * tau
 
+    # Cap the integrator step to half the pulse width so the adaptive RK45 does
+    # not under-resolve the narrow pulses. Used in every constraint evaluation
+    # below, so the SLSQP optimises against an accurate F(T).
+    capped_sim = Simulator(params, replace(simulator.config,
+                                           max_step=pulse_duration / 2.0))
+
     # Uniform initial guess — start from a feasible region (over-estimate)
     if J_initial_guess is None:
         J_initial_guess = 2.0 * eps * params.delta_s * cfg.T
@@ -317,7 +332,7 @@ def run_strategy_5(
     def _F_terminal(amounts: NDArray[np.float64]) -> float:
         u_func = _variable_impulsive_control(times, amounts, duration=pulse_duration)
         try:
-            res = simulator.simulate(T=cfg.T, u_func=u_func, model="S1")
+            res = capped_sim.simulate(T=cfg.T, u_func=u_func, model="S1")
             return float(res.state[0, -1])
         except RuntimeError:
             return float(params.F_bar)
@@ -340,7 +355,7 @@ def run_strategy_5(
 
     best = np.clip(opt.x, 0.0, None)
     u_func = _variable_impulsive_control(times, best, duration=pulse_duration)
-    result = simulator.simulate(T=cfg.T, u_func=u_func, model="S1")
+    result = capped_sim.simulate(T=cfg.T, u_func=u_func, model="S1")
 
     # Exact L1 cost = sum of optimised amounts (the SLSQP objective itself),
     # not the trapezoid of u on the coarse grid.
@@ -360,6 +375,147 @@ def run_strategy_5(
         m["J_L1"], result.state[0, -1], opt.success,
     )
     return result, m
+
+
+# ---------------------------------------------------------------------------
+# Strategy 6: impulsivized optimal
+# ---------------------------------------------------------------------------
+
+def _impulsivize_optimal(
+    t_star: NDArray[np.float64],
+    u_star: NDArray[np.float64],
+    T: float,
+    tau: float,
+    placement: str = "start",
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Lump the continuous optimum u* into one impulse per tau-interval.
+
+    Partition [0, T] into intervals of length ``tau`` and assign each interval a
+    single impulse whose mass equals the optimal cost spent there:
+        c_k = integral over the interval of u*(t) dt.
+    Intervals where u* == 0 (the waiting phases) get c_k = 0, so by construction
+    Σ c_k = J_L1(u*) and the result is compared with the continuous optimum at
+    EQUAL budget.
+
+    Returns
+    -------
+    (times, amounts) : impulse start/centre times and masses c_k.
+    """
+    edges = np.arange(0.0, T - 1e-9, tau)
+    edges = np.append(edges, T)  # close the last (possibly partial) interval
+    times, amounts = [], []
+    for a, b in zip(edges[:-1], edges[1:]):
+        mask = (t_star >= a) & (t_star <= b)
+        c_k = (float(np.trapezoid(u_star[mask], t_star[mask]))
+               if mask.sum() > 1 else 0.0)
+        times.append(a if placement == "start" else 0.5 * (a + b))
+        amounts.append(max(c_k, 0.0))
+    return np.asarray(times), np.asarray(amounts)
+
+
+def run_strategy_6(
+    simulator: Simulator,
+    cfg: ControlConfig,
+    opt1: OptimisationResult,
+    tau: float = 7.0,
+    placement: str = "start",
+    pulse_duration: float = 0.5,
+) -> tuple[SimulationResult, dict[str, Any]]:
+    """Strategy 6: impulsivized optimal.
+
+    Take the continuous optimum u*(t) from Strategy 1 and replace it by one
+    impulse per ``tau``-interval carrying the optimal cost of that interval
+    (c_k = integral of u* over the interval). The total budget equals J_L1(u*),
+    so the strategy is compared with the continuous optimum at equal cost: it
+    shows whether discretising the *optimal* effort still suppresses, and how
+    close it lands to the SLSQP per-pulse optimisation (Strategy 5).
+    """
+    params = simulator.params
+    eps = _epsilon(params, cfg)
+    times, amounts = _impulsivize_optimal(
+        opt1.t, opt1.u_opt, cfg.T, tau, placement
+    )
+    n_pulses = int((amounts > 0).sum())
+    logger.info(
+        "Strategy 6 — impulsivized optimal | tau=%.0f d, %d pulses, placement=%s",
+        tau, n_pulses, placement,
+    )
+    u_func = _variable_impulsive_control(times, amounts, duration=pulse_duration)
+    # Cap the integrator step to half the pulse width: with sparse impulses
+    # (tau=7, 14) preceded by the long u*=0 initial phase, an unbounded adaptive
+    # RK45 step jumps over the 0.5-day pulses and falsely reports F(T)=F_bar.
+    # The simulator documents this requirement (max_step <= pulse_width / 2).
+    capped_sim = Simulator(params, replace(simulator.config,
+                                           max_step=pulse_duration / 2.0))
+    result = capped_sim.simulate(T=cfg.T, u_func=u_func, model="S1")
+    m = _metrics(
+        result.t, result.state[0], result.control, params, eps,
+        j_l1=float(np.sum(amounts)),
+    )
+    m.update({
+        "tau_days": tau,
+        "n_pulses": n_pulses,
+        "placement": placement,
+    })
+    logger.info(
+        "Strategy 6 done | J=%.4e, F(T)/Fbar=%.4f",
+        m["J_L1"], m["F_T_over_Fbar"],
+    )
+    return result, m
+
+
+# ---------------------------------------------------------------------------
+# Strategy 5 initialisation sweep (non-convexity range)
+# ---------------------------------------------------------------------------
+
+def run_strategy_5_init_sweep(
+    simulator: Simulator,
+    cfg: ControlConfig,
+    J_ref: float,
+    scales: list[float],
+    tau: float = 7.0,
+    maxiter: int = 300,
+) -> dict[str, Any]:
+    """Initialisation sweep for the optimal-impulsive SLSQP (Section 4.5).
+
+    Runs Strategy 5 from several uniform initial guesses (``scale * J_ref``) to
+    characterise the non-convexity of the impulsive problem: it reports the
+    spread of the converged cost across initialisations, expressed as a
+    percentage over the continuous optimum J_ref.
+    """
+    runs: list[dict[str, Any]] = []
+    for s in scales:
+        logger.info("Init sweep | scale=%.2f (J0=%.0f)", s, s * J_ref)
+        _, m = run_strategy_5(
+            simulator, cfg, tau=tau, J_initial_guess=s * J_ref, maxiter=maxiter,
+        )
+        runs.append({
+            "scale": s,
+            "J_L1": m["J_L1"],
+            "F_T_over_Fbar": m["F_T_over_Fbar"],
+            "scipy_success": m["scipy_success"],
+        })
+    js = [r["J_L1"] for r in runs]
+    j_min, j_max = min(js), max(js)
+    summary = {
+        "tau_days": tau,
+        "J_ref": J_ref,
+        "runs": runs,
+        "J_min": j_min,
+        "J_max": j_max,
+        "pct_over_optimum_min": 100.0 * (j_min / J_ref - 1.0),
+        "pct_over_optimum_max": 100.0 * (j_max / J_ref - 1.0),
+    }
+    print(f"\nStrategy 5 initialisation sweep (tau={tau:.0f} d, J_ref={J_ref:.0f})")
+    print(f"{'scale':>6} {'J':>12} {'F(T)/Fbar':>10} {'% over opt':>11} "
+          f"{'success':>8}")
+    for r in runs:
+        print(f"{r['scale']:>6.2f} {r['J_L1']:>12.0f} {r['F_T_over_Fbar']:>10.4f} "
+              f"{100.0 * (r['J_L1'] / J_ref - 1.0):>10.1f}% "
+              f"{str(r['scipy_success']):>8}")
+    print(f"  Range over optimum: +{summary['pct_over_optimum_min']:.1f}% .. "
+          f"+{summary['pct_over_optimum_max']:.1f}%\n")
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -408,6 +564,23 @@ def main() -> None:
                         help="Release period (days) for Strategy 5")
     parser.add_argument("--c-weight", type=float, default=1.0,
                         help="Quadratic weight c for Strategy 4 L2 cost")
+    parser.add_argument("--strategies", type=int, nargs="+",
+                        default=[1, 2, 3, 4, 5, 6], choices=[1, 2, 3, 4, 5, 6],
+                        help="Which strategies to run. Strategy 1 always runs "
+                             "(it provides u* and J_ref for the others). "
+                             "Metrics merge into the existing JSON, so a partial "
+                             "run does not erase the others.")
+    parser.add_argument("--s5-sweep", type=float, nargs="*", default=None,
+                        metavar="SCALE",
+                        help="Run ONLY the Strategy 5 initialisation sweep "
+                             "(non-convexity range). Optionally pass the uniform "
+                             "init scales (x J_ref); defaults to 1.0 1.5 2.0. "
+                             "Each point is a full SLSQP run, so this is slow.")
+    parser.add_argument("--s6-figure", action="store_true",
+                        help="Run ONLY Strategy 1 + Strategy 6 and save "
+                             "results/fig_impulsivizacion.pdf: F(t) of the "
+                             "continuous optimum vs the impulsivized optimum for "
+                             "each tau. Fast (no SLSQP).")
     args = parser.parse_args()
 
     cfg_dict = load_config(args.config)
@@ -435,54 +608,105 @@ def main() -> None:
     # Mapping strategy label → SimulationResult (for comparison plot)
     plot_sims: dict[str, SimulationResult] = {}
 
-    # ---- Strategy 1 -------------------------------------------------------
+    run = set(args.strategies)
+
+    # ---- Strategy 1 (always runs: provides u* and J_ref) ------------------
     opt1, m1 = run_strategy_1(optimiser, control_cfg)
     all_metrics["strategy_1_L1_optimal"] = m1
     plot_sims["Optimal $L^1$"] = _opt_to_sim(opt1, simulator, control_cfg)
     J_ref = m1["J_L1"]
 
+    # ---- Strategy 5 initialisation sweep — runs alone and exits -----------
+    if args.s5_sweep is not None:
+        scales = args.s5_sweep if args.s5_sweep else [1.0, 1.5, 2.0]
+        sweep = run_strategy_5_init_sweep(
+            simulator, control_cfg, J_ref, scales, tau=args.tau_optimal,
+        )
+        sweep_path = args.output / "s5_init_sweep.json"
+        sweep_path.write_text(json.dumps(sweep, indent=2, default=str))
+        logger.info("Init sweep saved → %s", sweep_path)
+        return
+
+    # ---- Strategy 6 figure — runs alone and exits ------------------------
+    if args.s6_figure:
+        sims = {"Óptima continua $L^1$": _opt_to_sim(opt1, simulator, control_cfg)}
+        for tau in args.tau_values:
+            sim6, _ = run_strategy_6(simulator, control_cfg, opt1, tau=tau)
+            sims[rf"Impulsivizada $\tau$={int(tau)}d"] = sim6
+        fig_path = args.output / "fig_impulsivizacion.pdf"
+        fig = plot_strategy_comparison(
+            results=sims, epsilon=eps, save_path=fig_path,
+            state_index=0, state_label=r"Females $F(t)$",
+        )
+        plt.close(fig)
+        logger.info("Impulsivization figure saved → %s", fig_path)
+        return
+
     # ---- Strategy 2 -------------------------------------------------------
-    sim2, m2 = run_strategy_2(simulator, control_cfg, J_ref)
-    all_metrics["strategy_2_constant"] = m2
-    plot_sims["Constant"] = sim2
+    if 2 in run:
+        sim2, m2 = run_strategy_2(simulator, control_cfg, J_ref)
+        all_metrics["strategy_2_constant"] = m2
+        plot_sims["Constant"] = sim2
 
     # ---- Strategy 3 -------------------------------------------------------
-    for tau in args.tau_values:
-        sim3, m3 = run_strategy_3(simulator, control_cfg, J_ref, tau)
-        key = f"strategy_3_impulsive_tau{int(tau)}d"
-        all_metrics[key] = m3
-        plot_sims[rf"Periodic $\tau$={int(tau)}d"] = sim3
+    if 3 in run:
+        for tau in args.tau_values:
+            sim3, m3 = run_strategy_3(simulator, control_cfg, J_ref, tau)
+            key = f"strategy_3_impulsive_tau{int(tau)}d"
+            all_metrics[key] = m3
+            plot_sims[rf"Periodic $\tau$={int(tau)}d"] = sim3
 
     # ---- Strategy 4 -------------------------------------------------------
-    opt4, m4 = run_strategy_4(optimiser, control_cfg, c_weight=args.c_weight)
-    all_metrics["strategy_4_L2_optimal"] = m4
-    plot_sims["Optimal $L^2$"] = _opt_to_sim(opt4, simulator, control_cfg)
+    if 4 in run:
+        opt4, m4 = run_strategy_4(optimiser, control_cfg, c_weight=args.c_weight)
+        all_metrics["strategy_4_L2_optimal"] = m4
+        plot_sims["Optimal $L^2$"] = _opt_to_sim(opt4, simulator, control_cfg)
 
     # ---- Strategy 5 -------------------------------------------------------
-    sim5, m5 = run_strategy_5(
-        simulator, control_cfg, tau=args.tau_optimal, J_initial_guess=J_ref,
-    )
-    all_metrics[f"strategy_5_impulsive_optimal_tau{int(args.tau_optimal)}d"] = m5
-    plot_sims[rf"Optimal impulsive $\tau$={int(args.tau_optimal)}d"] = sim5
+    if 5 in run:
+        sim5, m5 = run_strategy_5(
+            simulator, control_cfg, tau=args.tau_optimal, J_initial_guess=J_ref,
+        )
+        all_metrics[f"strategy_5_impulsive_optimal_tau{int(args.tau_optimal)}d"] = m5
+        plot_sims[rf"Optimal impulsive $\tau$={int(args.tau_optimal)}d"] = sim5
 
-    # ---- Persist metrics --------------------------------------------------
+    # ---- Strategy 6: impulsivized optimal --------------------------------
+    # Reuses the u* already computed in Strategy 1 (opt1); records metrics only,
+    # the comparison figure is left unchanged.
+    if 6 in run:
+        for tau in args.tau_values:
+            _, m6 = run_strategy_6(simulator, control_cfg, opt1, tau=tau)
+            all_metrics[f"strategy_6_impulsivized_optimal_tau{int(tau)}d"] = m6
+
+    # ---- Persist metrics (merge with existing JSON, non-destructive) ------
     out_json = args.output / "strategies_metrics.json"
-    out_json.write_text(json.dumps(all_metrics, indent=2, default=str))
-    logger.info("Metrics saved → %s", out_json)
+    merged: dict[str, Any] = {}
+    if out_json.is_file():
+        try:
+            merged = json.loads(out_json.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            merged = {}
+    merged.update(all_metrics)
+    out_json.write_text(json.dumps(merged, indent=2, default=str))
+    logger.info("Metrics saved (merged) → %s", out_json)
 
     # ---- Summary table ----------------------------------------------------
-    _print_summary(all_metrics, params, eps)
+    _print_summary(merged, params, eps)
 
-    # ---- Comparison figure ------------------------------------------------
-    fig = plot_strategy_comparison(
-        results=plot_sims,
-        epsilon=eps,
-        save_path=args.output / "fig_comparison.pdf",
-        state_index=0,
-        state_label=r"Females $F(t)$",
-    )
-    plt.close(fig)
-    logger.info("Comparison figure saved → %s", args.output / "fig_comparison.pdf")
+    # ---- Comparison figure (only on a full run, to protect the thesis fig) -
+    if run >= {2, 3, 4, 5}:
+        fig = plot_strategy_comparison(
+            results=plot_sims,
+            epsilon=eps,
+            save_path=args.output / "fig_comparison.pdf",
+            state_index=0,
+            state_label=r"Females $F(t)$",
+        )
+        plt.close(fig)
+        logger.info("Comparison figure saved → %s", args.output / "fig_comparison.pdf")
+    else:
+        logger.info("Partial run %s: comparison figure not regenerated.",
+                    sorted(run))
 
 
 if __name__ == "__main__":

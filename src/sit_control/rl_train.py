@@ -1,4 +1,4 @@
-"""Train PPO or SAC policies on the SIT environment (Strategy 9).
+"""Train PPO or SAC policies on the SIT environment (closed-loop RL policy).
 
 Hyperparameter defaults follow the original PPO (Schulman et al. 2017) and
 SAC (Haarnoja et al. 2018) papers, adapted to the short-horizon SIT episode

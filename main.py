@@ -8,8 +8,8 @@ verify      Reproduce the verification table of Almeida et al. (2022).
 convergence Study J(u*) convergence as a function of GEKKO collocation size N.
 strategies  Run and compare the five SIT control strategies.
 sensitivity Parametric sensitivity analysis +/-20 % on delta_F, nu_E, K.
-rl-train    Train a Deep RL policy (Strategy 9). Requires the [rl] extras.
-rl-eval     Evaluate a trained Deep RL policy on random parameter samples.
+rl-train    Train the closed-loop RL policy. Requires the [rl] extras.
+rl-eval     Evaluate a trained RL policy on random parameter samples.
 
 Usage
 -----
@@ -118,7 +118,7 @@ def build_parser() -> argparse.ArgumentParser:
     # --- rl-train ----------------------------------------------------------
     p_rltrain = sub.add_parser(
         "rl-train",
-        help="Train a Deep RL policy (Strategy 9)",
+        help="Train the closed-loop RL policy",
         description="Trains PPO or SAC on the SIT environment with optional "
                     "domain randomization. Requires the [rl] optional extras "
                     "(gymnasium, stable-baselines3, torch, scikit-learn).",
@@ -159,7 +159,7 @@ def build_parser() -> argparse.ArgumentParser:
     # --- rl-eval -----------------------------------------------------------
     p_rleval = sub.add_parser(
         "rl-eval",
-        help="Evaluate a trained Deep RL policy (Strategy 9)",
+        help="Evaluate a trained RL policy",
         description="Runs N rollouts with random parameters from Theta and "
                     "reports mean cost, success rate, mean F(T).",
     )

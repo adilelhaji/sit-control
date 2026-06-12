@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# EXHAUSTIVE, unattended sweep of Strategy 9 (Deep RL).
+# EXHAUSTIVE, unattended sweep of the closed-loop RL policy.
 #
 # Iterates over the full factorial of the key PPO hyperparameters, trains
 # each combination, evaluates it (robustness +-30% DR and nominal) and writes

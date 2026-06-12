@@ -1,4 +1,4 @@
-"""Unit tests for the SIT Gymnasium environment (Strategy 9).
+"""Unit tests for the SIT Gymnasium environment (closed-loop RL policy).
 
 These tests verify the Gymnasium API contract and the dynamics of the
 environment. They do NOT depend on stable-baselines3 or torch.

@@ -53,14 +53,14 @@ python main.py convergence --config configs/almeida2022.yaml
 # Parametric sensitivity analysis ±20 % on delta_F, nu_E, K
 python main.py sensitivity --config configs/almeida2022.yaml
 
-# Train a Deep RL policy (Strategy 9; requires the [rl] extras)
+# Train the closed-loop RL policy (requires the [rl] extras)
 python main.py rl-train --config configs/almeida2022.yaml --algorithm PPO
 
 # Evaluate a trained RL policy on 100 random parameter draws
 python main.py rl-eval --config configs/almeida2022.yaml --model results/rl/ppo_policy.zip
 ```
 
-To enable the RL features (Strategy 9):
+To enable the RL features (closed-loop policy):
 
 ```bash
 pip install -e ".[rl]"   # gymnasium, stable-baselines3, torch, scikit-learn
@@ -106,29 +106,35 @@ result = sim.simulate(T=150.0, u_func=impulsive_control(times, 5000.0), model="S
 sit-control/
 ├── main.py                   # Unified CLI entry point
 ├── configs/
-│   └── almeida2022.yaml      # Reference configuration (Almeida et al. 2022)
+│   ├── almeida2022.yaml      # Reference configuration (Almeida et al. 2022, K=18258)
+│   └── join2026.yaml         # Alternative field calibration (Join et al. 2026, K=22200)
 ├── src/sit_control/
 │   ├── parameters.py         # BiologicalParameters, ControlConfig, NumericalConfig
-│   ├── model.py              # ODE right-hand sides for S1 and S2
+│   ├── model.py              # ODE right-hand sides for S1 and S2 (single source of f)
 │   ├── simulator.py          # Simulator wrapping scipy solve_ivp
 │   ├── controls.py           # Control law factories
 │   ├── optimizer.py          # GekkoOptimiser: solve_L1, solve_L2
 │   ├── bisection.py          # Algorithm 2: bang-singular-bang bisection
+│   ├── pmp_sweep.py          # PMP design-space sweep (horizon vs capacity)
 │   ├── metrics.py            # cost_L1, cost_L2, suppression_time
-│   └── plotting.py           # Publication-quality figures
+│   ├── plotting.py           # Publication-quality figures
+│   ├── rl_env.py             # SITEnv: Gymnasium MDP over S1 with domain randomization
+│   ├── rl_train.py           # PPO training (Stable-Baselines3)
+│   └── rl_evaluate.py        # Robustness + K-fold evaluation of trained policies
 ├── scripts/
 │   ├── run_verification.py   # Verification table vs Almeida (2022)
 │   ├── run_convergence.py    # Convergence study J(u*) vs N
 │   ├── run_strategies.py     # Five-strategy comparison (TFG Ch. 4)
-│   └── run_sensitivity.py    # Parametric sensitivity analysis (TFG Ch. 4)
+│   ├── run_sensitivity.py    # Parametric sensitivity analysis (TFG Ch. 4)
+│   ├── run_optimal_structure.py  # bang-singular-bang structure figure
+│   ├── run_comparison_s1_s2.py   # S1 vs S2 trajectory comparison
+│   ├── run_rl_training.py    # RL policy training entry point
+│   ├── run_rl_evaluation.py  # RL policy evaluation entry point
+│   └── rl_rollout.py, rl_figures.py, rl_summary.py  # RL post-processing helpers
 └── tests/
-    ├── test_model.py
-    ├── test_simulator.py
-    ├── test_optimizer.py
-    ├── test_bisection.py
-    ├── test_run_strategies.py
-    ├── test_run_sensitivity.py
-    └── test_main.py
+    ├── test_parameters.py    test_model.py        test_simulator.py
+    ├── test_optimizer.py     test_bisection.py    test_run_strategies.py
+    └── test_run_sensitivity.py  test_rl_env.py  test_rl_evaluate.py  test_main.py
 ```
 
 ## Reproducing the thesis results

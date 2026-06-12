@@ -1,4 +1,4 @@
-"""CLI: train a PPO or SAC policy for Strategy 9 (Deep RL).
+"""CLI: train a PPO or SAC closed-loop RL policy.
 
 Usage
 -----
@@ -100,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     logger.info("=" * 70)
-    logger.info("Strategy 9: Deep RL training")
+    logger.info("Closed-loop RL training")
     logger.info("=" * 70)
     logger.info("Algorithm:           %s", args.algorithm)
     logger.info("Timesteps:           %d", args.timesteps)

@@ -1,4 +1,4 @@
-"""CLI: evaluate a trained RL policy for Strategy 9.
+"""CLI: evaluate a trained closed-loop RL policy.
 
 Two modes
 ---------
@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
         model = SAC.load(args.model)
 
     logger.info("=" * 70)
-    logger.info("Strategy 9: Deep RL evaluation")
+    logger.info("Closed-loop RL evaluation")
     logger.info("=" * 70)
     logger.info("Model:               %s", args.model)
     logger.info("N episodes:          %d", args.n_episodes)

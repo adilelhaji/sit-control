@@ -1,4 +1,4 @@
-"""Evaluation of trained RL policies for Strategy 9.
+"""Evaluation of trained closed-loop RL policies.
 
 Provides two evaluation protocols:
 
