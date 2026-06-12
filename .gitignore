@@ -43,6 +43,8 @@ htmlcov/
 
 # Project-specific outputs
 results/
+figures/
+.claude/
 *.log
 *.tmp
 gekko_*/        # GEKKO work directories
