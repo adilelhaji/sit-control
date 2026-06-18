@@ -34,8 +34,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
-from sit_control.metrics import suppression_time
-from sit_control.optimizer import GekkoOptimiser
+from sit_control.bisection import build_formula9_trajectory, solve_by_bisection
+from sit_control.metrics import cost_L1, suppression_time
 from sit_control.parameters import (
     BiologicalParameters,
     ControlConfig,
@@ -90,7 +90,7 @@ def _run_one(
     control_cfg: ControlConfig,
     fixed_epsilon: float,
 ) -> dict[str, Any]:
-    """Solve L^1 optimal control for one parameter set.
+    """Solve L^1 optimal control for one parameter set using bisection.
 
     Parameters
     ----------
@@ -113,21 +113,24 @@ def _run_one(
         U_max=control_cfg.U_max,
         epsilon=fixed_epsilon,
     )
-    optimiser = GekkoOptimiser(params, num_cfg)
 
     t_start = time.perf_counter()
-    result = optimiser.solve_L1(cfg)
+    bis = solve_by_bisection(params, cfg)
+    t, F, u = build_formula9_trajectory(params, cfg, bis, num_cfg, n_eval=20000)
     wall = time.perf_counter() - t_start
 
-    t_eps = suppression_time(result.t, result.F_opt, fixed_epsilon)
+    J = cost_L1(t, u)
+    # tol=1.0: bisection converges to F_min = epsilon ± 1e-3; one female
+    # tolerance avoids spurious None when F barely touches the threshold.
+    t_eps = suppression_time(t, F, fixed_epsilon, tol=1.0)
 
     return {
-        "J": result.cost,
+        "J": J,
         "t_epsilon_days": t_eps,
-        "F_T": float(result.F_opt[-1]),
+        "F_T": float(F[-1]),
         "F_bar": params.F_bar,
         "R0": params.R0,
-        "converged": result.converged,
+        "converged": bis.converged,
         "wall_time_s": round(wall, 3),
     }
 
