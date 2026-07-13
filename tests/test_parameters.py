@@ -20,7 +20,7 @@ def test_default_preset_reproduces_almeida_F_bar() -> None:
     with that reference value.
     """
     params = BiologicalParameters()
-    assert params.K == pytest.approx(K_ALMEIDA_2022)
+    assert pytest.approx(K_ALMEIDA_2022) == params.K
     assert params.F_bar == pytest.approx(11037.0, abs=2.0)
 
 
@@ -33,7 +33,7 @@ def test_almeida2022_preset_F_bar() -> None:
 def test_join2026_preset_K() -> None:
     """The join2026() preset must set K = 22200 (Join 2026, Sec. 5.2)."""
     params = BiologicalParameters.join2026()
-    assert params.K == pytest.approx(K_JOIN_2026)
+    assert pytest.approx(K_JOIN_2026) == params.K
 
 
 def test_presets_share_biological_parameters() -> None:
@@ -44,8 +44,16 @@ def test_presets_share_biological_parameters() -> None:
     """
     a = BiologicalParameters.almeida2022()
     j = BiologicalParameters.join2026()
-    for field in ("beta_E", "delta_E", "delta_M", "delta_F",
-                  "delta_s", "nu_E", "nu", "gamma_s"):
+    for field in (
+        "beta_E",
+        "delta_E",
+        "delta_M",
+        "delta_F",
+        "delta_s",
+        "nu_E",
+        "nu",
+        "gamma_s",
+    ):
         assert getattr(a, field) == getattr(j, field), (
             f"{field} differs between presets: "
             f"almeida={getattr(a, field)} join={getattr(j, field)}"
@@ -57,7 +65,7 @@ def test_R0_independent_of_K() -> None:
     """R0 must not depend on K (it depends only on demographic rates)."""
     a = BiologicalParameters.almeida2022()
     j = BiologicalParameters.join2026()
-    assert a.R0 == pytest.approx(j.R0, rel=1e-12)
+    assert pytest.approx(j.R0, rel=1e-12) == a.R0
 
 
 def test_F_bar_scales_linearly_with_K() -> None:
@@ -72,7 +80,7 @@ def test_F_bar_scales_linearly_with_K() -> None:
 def test_override_via_preset() -> None:
     """Presets must accept field overrides without breaking K."""
     p = BiologicalParameters.almeida2022(nu_E=0.1)
-    assert p.K == pytest.approx(K_ALMEIDA_2022)
+    assert pytest.approx(K_ALMEIDA_2022) == p.K
     assert p.nu_E == pytest.approx(0.1)
 
 

@@ -30,7 +30,12 @@ def test_evaluate_policy_floating_epsilon_is_per_episode() -> None:
     rl_cfg = RLConfig(randomize=True, fixed_epsilon=False)
 
     result = evaluate_policy(
-        _ZeroPolicy(), params, cfg, rl_cfg, n_episodes=4, seed=0,
+        _ZeroPolicy(),
+        params,
+        cfg,
+        rl_cfg,
+        n_episodes=4,
+        seed=0,
     )
 
     assert result.n_episodes == 4
@@ -48,7 +53,12 @@ def test_evaluate_policy_fixed_epsilon_constant() -> None:
     rl_cfg = RLConfig(randomize=True, fixed_epsilon=True)
 
     result = evaluate_policy(
-        _ZeroPolicy(), params, cfg, rl_cfg, n_episodes=3, seed=0,
+        _ZeroPolicy(),
+        params,
+        cfg,
+        rl_cfg,
+        n_episodes=3,
+        seed=0,
     )
 
     assert result.epsilon == pytest.approx(params.F_bar / 4.0, rel=1e-9)

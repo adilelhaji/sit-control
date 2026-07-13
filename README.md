@@ -1,6 +1,7 @@
 # SIT-Control: Optimal Control for the Sterile Insect Technique
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/adilelhaji/sit-control/actions/workflows/ci.yml/badge.svg)](https://github.com/adilelhaji/sit-control/actions/workflows/ci.yml)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-orange)](https://github.com/astral-sh/ruff)
 [![Type checked: mypy](https://img.shields.io/badge/type%20checked-mypy-blue)](http://mypy-lang.org/)
@@ -28,10 +29,10 @@ Technique* — Adil El Haji, Universitat Autònoma de Barcelona, 2026.
 
 ## Installation
 
-Requires Python 3.11 or later.
+Requires Python 3.12 or later.
 
 ```bash
-git clone https://github.com/[USER]/sit-control.git
+git clone https://github.com/adilelhaji/sit-control.git
 cd sit-control
 pip install -e ".[dev]"
 ```

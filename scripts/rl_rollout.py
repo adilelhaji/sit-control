@@ -36,9 +36,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if a.algorithm == "PPO":
         from stable_baselines3 import PPO
+
         model = PPO.load(str(a.model))
     else:
         from stable_baselines3 import SAC
+
         model = SAC.load(str(a.model))
 
     env = make_env(p, cc, RLConfig(randomize=False))

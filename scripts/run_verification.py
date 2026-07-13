@@ -65,6 +65,7 @@ BISECTION_HORIZONS = {150.0, 200.0}
 # Cost helper
 # ---------------------------------------------------------------------------
 
+
 def _cost_from_bisection(
     params: BiologicalParameters,
     cfg: ControlConfig,
@@ -95,8 +96,9 @@ def _cost_from_bisection(
     state_t0 = initial.copy()
     if t0 > 1e-10:
         sim = Simulator(params, num)
-        res1 = sim.simulate(T=t0, u_func=constant_control(0.0),
-                            model="S1", initial_state=initial)
+        res1 = sim.simulate(
+            T=t0, u_func=constant_control(0.0), model="S1", initial_state=initial
+        )
         state_t0 = res1.state[:, -1].copy()
 
     if bis_result.tau1 < 1e-10:
@@ -111,24 +113,39 @@ def _cost_from_bisection(
         return np.array([dF, dMs], dtype=np.float64)
 
     n_eval = max(500, int(bis_result.tau1 * 10))
-    sol = solve_ivp(fun=_rhs, t_span=(t0, t1),
-                    y0=state_t0, method=num.solver_method,
-                    t_eval=np.linspace(t0, t1, n_eval),
-                    rtol=num.rtol, atol=num.atol)
+    sol = solve_ivp(
+        fun=_rhs,
+        t_span=(t0, t1),
+        y0=state_t0,
+        method=num.solver_method,
+        t_eval=np.linspace(t0, t1, n_eval),
+        rtol=num.rtol,
+        atol=num.atol,
+    )
 
-    u_grid = np.array([
-        float(np.clip(singular_control(
-            float(max(sol.y[0, i], 0.0)),
-            float(max(sol.y[1, i], 0.0)), params),
-            0.0, cfg.U_max))
-        for i in range(sol.y.shape[1])
-    ])
+    u_grid = np.array(
+        [
+            float(
+                np.clip(
+                    singular_control(
+                        float(max(sol.y[0, i], 0.0)),
+                        float(max(sol.y[1, i], 0.0)),
+                        params,
+                    ),
+                    0.0,
+                    cfg.U_max,
+                )
+            )
+            for i in range(sol.y.shape[1])
+        ]
+    )
     return float(np.trapezoid(u_grid, sol.t))
 
 
 # ---------------------------------------------------------------------------
 # Worker functions  (one per subtask — serialisable for multiprocessing)
 # ---------------------------------------------------------------------------
+
 
 def _worker_bisection(T: float, cfg_dict: dict) -> dict:
     """Subtask: run bisection for horizon T."""
@@ -149,14 +166,25 @@ def _worker_bisection(T: float, cfg_dict: dict) -> dict:
     wall = time.perf_counter() - t0
     err = relative_error(J, REFERENCE_VALUES["S1"][int(T)])
 
-    log.info("Done — J=%.4e  err=%.2e  t=%.2fs  converged=%s  tau1=%.1fd",
-             J, err, wall, bis.converged, bis.tau1)
+    log.info(
+        "Done — J=%.4e  err=%.2e  t=%.2fs  converged=%s  tau1=%.1fd",
+        J,
+        err,
+        wall,
+        bis.converged,
+        bis.tau1,
+    )
 
     return {
-        "solver": "bisection", "T": T, "J": J,
-        "relative_error": err, "wall_time_s": wall,
-        "converged": bis.converged, "tau1_days": bis.tau1,
-        "t0_days": bis.t0, "F_min": bis.F_min,
+        "solver": "bisection",
+        "T": T,
+        "J": J,
+        "relative_error": err,
+        "wall_time_s": wall,
+        "converged": bis.converged,
+        "tau1_days": bis.tau1,
+        "t0_days": bis.t0,
+        "F_min": bis.F_min,
     }
 
 
@@ -176,12 +204,20 @@ def _worker_gekko(T: float, cfg_dict: dict) -> dict:
     result = GekkoOptimiser(bio, num).solve_L1(cfg)
     err = relative_error(result.cost, REFERENCE_VALUES["S1"][int(T)])
 
-    log.info("Done — J=%.4e  err=%.2e  t=%.2fs  converged=%s",
-             result.cost, err, result.wall_time, result.converged)
+    log.info(
+        "Done — J=%.4e  err=%.2e  t=%.2fs  converged=%s",
+        result.cost,
+        err,
+        result.wall_time,
+        result.converged,
+    )
 
     return {
-        "solver": "gekko", "T": T, "J": result.cost,
-        "relative_error": err, "wall_time_s": result.wall_time,
+        "solver": "gekko",
+        "T": T,
+        "J": result.cost,
+        "relative_error": err,
+        "wall_time_s": result.wall_time,
         "converged": result.converged,
     }
 
@@ -189,6 +225,7 @@ def _worker_gekko(T: float, cfg_dict: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -212,7 +249,11 @@ def main() -> None:
 
     logger.info(
         "F_bar=%.2f | epsilon=%.2f | subtasks=%d | workers=%d / %d CPUs",
-        bio.F_bar, bio.F_bar / 4, len(subtasks), n_workers, os.cpu_count() or 1,
+        bio.F_bar,
+        bio.F_bar / 4,
+        len(subtasks),
+        n_workers,
+        os.cpu_count() or 1,
     )
 
     args.output.mkdir(parents=True, exist_ok=True)
@@ -226,9 +267,12 @@ def main() -> None:
             fn = _worker_bisection if solver == "bisection" else _worker_gekko
             futures[pool.submit(fn, T, cfg_dict)] = (solver, T)
 
-        with tqdm(total=len(subtasks), desc="Subtasks", unit="task",
-                  bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
-                  ) as pbar:
+        with tqdm(
+            total=len(subtasks),
+            desc="Subtasks",
+            unit="task",
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
+        ) as pbar:
             for fut in as_completed(futures):
                 solver, T = futures[fut]
                 label = f"{solver[:3].upper()} T={int(T)}d"

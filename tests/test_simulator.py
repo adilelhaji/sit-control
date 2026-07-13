@@ -7,7 +7,7 @@ import pytest
 
 from sit_control.controls import constant_control, zero_control
 from sit_control.parameters import BiologicalParameters, NumericalConfig
-from sit_control.simulator import Simulator, SimulationResult
+from sit_control.simulator import SimulationResult, Simulator
 
 
 @pytest.fixture
@@ -31,7 +31,10 @@ def test_simulate_returns_correct_type(simulator: Simulator) -> None:
 def test_simulate_S1_shape(simulator: Simulator) -> None:
     """S1 simulation should produce a (2, n_eval) state array."""
     result = simulator.simulate(
-        T=10.0, u_func=zero_control(), model="S1", n_eval=100,
+        T=10.0,
+        u_func=zero_control(),
+        model="S1",
+        n_eval=100,
     )
     assert result.state.shape == (2, 100)
     assert result.t.shape == (100,)
@@ -41,7 +44,10 @@ def test_simulate_S1_shape(simulator: Simulator) -> None:
 def test_simulate_S2_shape(simulator: Simulator) -> None:
     """S2 simulation should produce a (4, n_eval) state array."""
     result = simulator.simulate(
-        T=10.0, u_func=zero_control(), model="S2", n_eval=100,
+        T=10.0,
+        u_func=zero_control(),
+        model="S2",
+        n_eval=100,
     )
     assert result.state.shape == (4, 100)
 
@@ -92,8 +98,11 @@ def test_custom_initial_state(simulator: Simulator) -> None:
     """A user-provided initial state should be respected."""
     initial = np.array([5000.0, 100.0])
     result = simulator.simulate(
-        T=0.1, u_func=zero_control(), model="S1",
-        initial_state=initial, n_eval=2,
+        T=0.1,
+        u_func=zero_control(),
+        model="S1",
+        initial_state=initial,
+        n_eval=2,
     )
     np.testing.assert_allclose(result.state[:, 0], initial, rtol=1e-6)
 

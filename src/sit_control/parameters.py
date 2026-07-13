@@ -37,12 +37,11 @@ References:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
-
 
 #: Carrying capacity consistent with Almeida et al. (2022) Tables 2-4
 #: (derived from F_bar = 11037 via the persistence-equilibrium formula).
@@ -89,20 +88,17 @@ class BiologicalParameters:
 
     def __post_init__(self) -> None:
         """Validate parameter values on construction."""
-        for name in ("beta_E", "delta_E", "delta_M", "delta_F",
-                    "delta_s", "nu_E", "K"):
+        for name in ("beta_E", "delta_E", "delta_M", "delta_F", "delta_s", "nu_E", "K"):
             value = getattr(self, name)
             if value <= 0:
                 raise ValueError(f"{name} must be positive, got {value}")
         if not 0 < self.nu < 1:
             raise ValueError(f"nu must be in (0, 1), got {self.nu}")
         if not 0 < self.gamma_s <= 1:
-            raise ValueError(
-                f"gamma_s must be in (0, 1], got {self.gamma_s}"
-            )
+            raise ValueError(f"gamma_s must be in (0, 1], got {self.gamma_s}")
 
     @classmethod
-    def almeida2022(cls, **overrides: float) -> "BiologicalParameters":
+    def almeida2022(cls, **overrides: float) -> BiologicalParameters:
         """Preset matching the numerical experiments of Almeida et al. (2022).
 
         Sets K = 18258 so that F_bar = 11037 (Almeida 2022, Tables 2-4).
@@ -117,7 +113,7 @@ class BiologicalParameters:
         return cls(K=K_ALMEIDA_2022, **overrides)
 
     @classmethod
-    def join2026(cls, **overrides: float) -> "BiologicalParameters":
+    def join2026(cls, **overrides: float) -> BiologicalParameters:
         """Preset matching Join, Almeida & Fliess (2026), Sec. 5.2.
 
         Sets K = 22200. This preset reproduces a different field-calibration
@@ -223,4 +219,5 @@ def load_config(path: Path | str) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(f"Configuration file not found: {path}")
     with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f)
+        data: dict[str, Any] = yaml.safe_load(f)
+    return data

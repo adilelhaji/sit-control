@@ -6,7 +6,7 @@ Simulator class.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,8 +23,10 @@ def constant_control(u_value: float) -> ControlLaw:
     Returns:
         Callable t -> u_value.
     """
+
     def _u(t: float) -> float:
         return u_value
+
     return _u
 
 
@@ -68,6 +70,7 @@ def impulsive_control(
             if start <= t < start + duration:
                 return rate
         return 0.0
+
     return _u
 
 
@@ -94,4 +97,5 @@ def interpolated_control(
 
     def _u(t: float) -> float:
         return float(np.interp(t, t_grid, u_grid, left=0.0, right=0.0))
+
     return _u

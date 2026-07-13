@@ -9,11 +9,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
@@ -39,18 +37,20 @@ def _save_figure(fig: Figure, path: Path) -> None:
 
 
 # Style configuration (applied at import time)
-plt.rcParams.update({
-    "figure.figsize": (10, 4),
-    "figure.dpi": 100,
-    "savefig.dpi": 300,
-    "savefig.bbox": "tight",
-    "font.family": "serif",
-    "font.size": 11,
-    "axes.grid": True,
-    "grid.alpha": 0.3,
-    "grid.linestyle": "--",
-    "lines.linewidth": 1.5,
-})
+plt.rcParams.update(
+    {
+        "figure.figsize": (10, 4),
+        "figure.dpi": 100,
+        "savefig.dpi": 300,
+        "savefig.bbox": "tight",
+        "font.family": "serif",
+        "font.size": 11,
+        "axes.grid": True,
+        "grid.alpha": 0.3,
+        "grid.linestyle": "--",
+        "lines.linewidth": 1.5,
+    }
+)
 
 
 def plot_optimal_solution(
@@ -75,7 +75,9 @@ def plot_optimal_solution(
     ax_F.plot(result.t, result.F_opt, color="C0", label=r"$F^*(t)$")
     if epsilon is not None:
         ax_F.axhline(
-            epsilon, color="C3", linestyle=":",
+            epsilon,
+            color="C3",
+            linestyle=":",
             label=rf"$\varepsilon = {epsilon:.0f}$",
         )
     ax_F.set_xlabel("Time (days)")
@@ -122,8 +124,11 @@ def plot_model_comparison(
     # S1 has F as index 0; S2 has F as index 2
     ax.plot(sim_S1.t, sim_S1.state[0], label="S1 (reduced)", color="C0")
     ax.plot(
-        sim_S2.t, sim_S2.state[2],
-        label="S2 (full)", color="C1", linestyle="--",
+        sim_S2.t,
+        sim_S2.state[2],
+        label="S2 (full)",
+        color="C1",
+        linestyle="--",
     )
 
     ax.set_xlabel("Time (days)")
@@ -162,7 +167,9 @@ def plot_convergence(
     ax_J.semilogx(N_values, costs, "o-", color="C0")
     if reference_cost is not None:
         ax_J.axhline(
-            reference_cost, color="C3", linestyle=":",
+            reference_cost,
+            color="C3",
+            linestyle=":",
             label=f"Reference: {reference_cost:.3e}",
         )
         ax_J.legend(loc="best")
@@ -210,8 +217,10 @@ def plot_strategy_comparison(
 
     if epsilon is not None:
         ax_state.axhline(
-            epsilon, color="black", linestyle=":",
-            label=rf"$\varepsilon$",
+            epsilon,
+            color="black",
+            linestyle=":",
+            label=r"$\varepsilon$",
         )
 
     ax_state.set_xlabel("Time (days)")

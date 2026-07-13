@@ -63,15 +63,25 @@ def main() -> None:
     epsilon = bio.F_bar / 4.0
     logger.info(
         "F_bar=%.2f | epsilon=%.2f | T=%.0f | U_max=%.0f | K=%.0f",
-        bio.F_bar, epsilon, args.T, cfg.U_max, bio.K,
+        bio.F_bar,
+        epsilon,
+        args.T,
+        cfg.U_max,
+        bio.K,
     )
 
     # ── 1. Solve bisection (Algorithm 2 of Almeida 2022) ─────────────────────
     logger.info("Solving bisection on S1 ...")
     bis = solve_by_bisection(bio, cfg)
     logger.info(
-        "Bisection: tau1=%.2fd  tau2=%.2fd  t0=%.2fd  t1=%.2fd  F_min=%.2f  converged=%s",
-        bis.tau1, bis.tau2, bis.t0, bis.t1, bis.F_min, bis.converged,
+        "Bisection: tau1=%.2fd  tau2=%.2fd  t0=%.2fd  t1=%.2fd  "
+        "F_min=%.2f  converged=%s",
+        bis.tau1,
+        bis.tau2,
+        bis.t0,
+        bis.t1,
+        bis.F_min,
+        bis.converged,
     )
 
     # ── 2. Reconstruct u*(t) and F*(t) via the formula (9) ───────────────────
@@ -86,14 +96,22 @@ def main() -> None:
     args.output.mkdir(parents=True, exist_ok=True)
 
     fig, (ax_F, ax_u) = plt.subplots(
-        2, 1, figsize=(8.5, 6.5), sharex=True,
+        2,
+        1,
+        figsize=(8.5, 6.5),
+        sharex=True,
         gridspec_kw={"height_ratios": [1.0, 0.85], "hspace": 0.08},
     )
 
     # Top: F*(t) ─────────────────────────────────────────────────────────────
     ax_F.plot(t, F, color="C0", lw=2.2, label=r"$F^*(t)$")
-    ax_F.axhline(epsilon, color="0.35", lw=1.0, linestyle=":",
-                 label=fr"$\varepsilon = \bar{{F}}/4 = {epsilon:.0f}$")
+    ax_F.axhline(
+        epsilon,
+        color="0.35",
+        lw=1.0,
+        linestyle=":",
+        label=rf"$\varepsilon = \bar{{F}}/4 = {epsilon:.0f}$",
+    )
     ax_F.axvline(bis.t0, color="0.55", lw=0.9, linestyle="--")
     ax_F.axvline(bis.t1, color="0.55", lw=0.9, linestyle="--")
     ax_F.set_ylabel("Fertile females $F^*(t)$")
@@ -101,38 +119,69 @@ def main() -> None:
     ax_F.grid(True, alpha=0.3)
     ax_F.legend(loc="upper right", framealpha=0.95)
     ax_F.set_title(
-        fr"Optimal solution by bisection: $T={args.T:.0f}$ d, "
-        fr"$\tau_1={bis.tau1:.2f}$ d, $\tau_2={bis.tau2:.2f}$ d, "
-        fr"$J^*={J_star:.3e}$"
+        rf"Optimal solution by bisection: $T={args.T:.0f}$ d, "
+        rf"$\tau_1={bis.tau1:.2f}$ d, $\tau_2={bis.tau2:.2f}$ d, "
+        rf"$J^*={J_star:.3e}$"
     )
 
     # Bottom: u*(t) ─────────────────────────────────────────────────────────
     ax_u.plot(t, u, color="C3", lw=2.2, label=r"$u^*(t)$")
-    ax_u.axhline(cfg.U_max, color="0.55", lw=0.8, linestyle=":",
-                 label=fr"$U_{{\max}}={cfg.U_max:.0f}$")
+    ax_u.axhline(
+        cfg.U_max,
+        color="0.55",
+        lw=0.8,
+        linestyle=":",
+        label=rf"$U_{{\max}}={cfg.U_max:.0f}$",
+    )
     ax_u.axvline(bis.t0, color="0.55", lw=0.9, linestyle="--")
     ax_u.axvline(bis.t1, color="0.55", lw=0.9, linestyle="--")
 
     # Annotate phases on the u panel
     y_mid = 0.55 * cfg.U_max
     ax_u.annotate(
-        r"$u^*\!=\!0$", xy=(bis.t0 / 2.0, y_mid),
-        ha="center", va="center", fontsize=11, color="0.30",
+        r"$u^*\!=\!0$",
+        xy=(bis.t0 / 2.0, y_mid),
+        ha="center",
+        va="center",
+        fontsize=11,
+        color="0.30",
     )
     ax_u.annotate(
-        r"singular arc", xy=((bis.t0 + bis.t1) / 2.0, 0.78 * cfg.U_max),
-        ha="center", va="center", fontsize=11, color="0.30",
+        r"singular arc",
+        xy=((bis.t0 + bis.t1) / 2.0, 0.78 * cfg.U_max),
+        ha="center",
+        va="center",
+        fontsize=11,
+        color="0.30",
     )
     ax_u.annotate(
-        r"$u^*\!=\!0$", xy=((bis.t1 + args.T) / 2.0, y_mid),
-        ha="center", va="center", fontsize=11, color="0.30",
+        r"$u^*\!=\!0$",
+        xy=((bis.t1 + args.T) / 2.0, y_mid),
+        ha="center",
+        va="center",
+        fontsize=11,
+        color="0.30",
     )
 
     # Vertical labels for t0, t1
-    ax_u.text(bis.t0, -0.10 * cfg.U_max, fr"$t_0={bis.t0:.1f}$",
-              ha="center", va="top", fontsize=9, color="0.30")
-    ax_u.text(bis.t1, -0.10 * cfg.U_max, fr"$t_1={bis.t1:.1f}$",
-              ha="center", va="top", fontsize=9, color="0.30")
+    ax_u.text(
+        bis.t0,
+        -0.10 * cfg.U_max,
+        rf"$t_0={bis.t0:.1f}$",
+        ha="center",
+        va="top",
+        fontsize=9,
+        color="0.30",
+    )
+    ax_u.text(
+        bis.t1,
+        -0.10 * cfg.U_max,
+        rf"$t_1={bis.t1:.1f}$",
+        ha="center",
+        va="top",
+        fontsize=9,
+        color="0.30",
+    )
 
     ax_u.set_xlabel("Time (days)")
     ax_u.set_ylabel(r"Control $u^*(t)$ (males/day)")

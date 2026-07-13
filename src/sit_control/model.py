@@ -7,6 +7,8 @@ Section 2.2 of the same article.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -44,8 +46,7 @@ def recruitment(
     denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
     numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
     denom = denom_E * (
-        (1.0 - p.nu) * p.nu_E * p.beta_E * F
-        + p.delta_M * p.gamma_s * Ms * denom_E
+        (1.0 - p.nu) * p.nu_E * p.beta_E * F + p.delta_M * p.gamma_s * Ms * denom_E
     )
 
     # The recruitment term has a removable singularity ONLY at (F, Ms) = (0, 0)
@@ -56,22 +57,23 @@ def recruitment(
     # so this never fires and changes no result.
     threshold = singular_eps * (1.0 + numerator)
     if np.isscalar(F):
+        # np.isscalar guarantees the scalar branch here, but mypy cannot narrow
+        # the float | NDArray union, so the numpy arithmetic is annotated locally.
         if denom < threshold:
-            return -p.delta_F * F
-        return numerator / denom - p.delta_F * F
+            return -p.delta_F * F  # type: ignore[operator,return-value]
+        return numerator / denom - p.delta_F * F  # type: ignore[operator,return-value]
 
-    out = np.where(
+    return np.where(
         denom < threshold,
         -p.delta_F * F,
         np.divide(numerator, denom, where=denom >= threshold) - p.delta_F * F,
     )
-    return out
 
 
 def rhs_reduced(
     t: float,
     state: NDArray[np.float64],
-    u_func: callable,
+    u_func: Callable[[float], float],
     params: BiologicalParameters,
     singular_eps: float = 1e-12,
 ) -> NDArray[np.float64]:
@@ -97,7 +99,7 @@ def rhs_reduced(
 def rhs_full(
     t: float,
     state: NDArray[np.float64],
-    u_func: callable,
+    u_func: Callable[[float], float],
     params: BiologicalParameters,
 ) -> NDArray[np.float64]:
     """Right-hand side of the full system S2.

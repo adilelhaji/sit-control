@@ -11,8 +11,8 @@ import pytest
 
 gym = pytest.importorskip("gymnasium")
 
-from sit_control.parameters import BiologicalParameters, ControlConfig
-from sit_control.rl_env import RLConfig, SITEnv
+from sit_control.parameters import BiologicalParameters, ControlConfig  # noqa: E402
+from sit_control.rl_env import RLConfig, SITEnv  # noqa: E402
 
 
 @pytest.fixture
@@ -38,6 +38,7 @@ def env_deterministic() -> SITEnv:
 # ---------------------------------------------------------------------------
 # Gymnasium API contract
 # ---------------------------------------------------------------------------
+
 
 def test_action_space_box_unit_interval(env: SITEnv) -> None:
     """Action space must be Box([0, 1]) with shape (1,)."""
@@ -87,6 +88,7 @@ def test_episode_terminates_at_T(env: SITEnv) -> None:
 # Dynamics correctness
 # ---------------------------------------------------------------------------
 
+
 def test_initial_state_is_persistence_equilibrium(env: SITEnv) -> None:
     """At reset, F equals F_bar of the (possibly perturbed) parameters."""
     env.reset(seed=0)
@@ -128,13 +130,17 @@ def test_cumulative_cost_equals_sum_of_releases(env_deterministic: SITEnv) -> No
 # Domain randomization
 # ---------------------------------------------------------------------------
 
+
 def test_randomization_changes_params_across_resets(env: SITEnv) -> None:
     """With randomize=True, two resets must yield different parameter sets."""
     _, info1 = env.reset(seed=1)
     _, info2 = env.reset(seed=2)
     p1, p2 = info1["params"], info2["params"]
     assert (p1.beta_E, p1.delta_F, p1.nu_E, p1.K) != (
-        p2.beta_E, p2.delta_F, p2.nu_E, p2.K,
+        p2.beta_E,
+        p2.delta_F,
+        p2.nu_E,
+        p2.K,
     )
 
 
@@ -161,6 +167,7 @@ def test_randomization_within_range(env: SITEnv) -> None:
 # ---------------------------------------------------------------------------
 # Reward structure
 # ---------------------------------------------------------------------------
+
 
 def test_reward_step_is_negative_cost(env_deterministic: SITEnv) -> None:
     """A single non-terminal step yields reward = -u * dt."""

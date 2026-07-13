@@ -98,7 +98,10 @@ class GekkoOptimiser:
 
         logger.info(
             "Solving L1 problem with T=%g, U_max=%g, epsilon=%g, N=%d",
-            cfg.T, cfg.U_max, epsilon, N,
+            cfg.T,
+            cfg.U_max,
+            epsilon,
+            N,
         )
 
         m = GEKKO(remote=False)
@@ -106,17 +109,18 @@ class GekkoOptimiser:
 
         # State variables — initial conditions fixed explicitly (IMODE=6 requires
         # the first element to match the physical initial state).
-        F  = m.Var(value=p.F_bar, lb=0.0, name="F")
-        Ms = m.Var(value=0.0,     lb=0.0, name="Ms")
-        m.fix_initial(F,  val=p.F_bar)
+        F = m.Var(value=p.F_bar, lb=0.0, name="F")
+        Ms = m.Var(value=0.0, lb=0.0, name="Ms")
+        m.fix_initial(F, val=p.F_bar)
         m.fix_initial(Ms, val=0.0)
 
         # Control variable — warm-started with a ramp matching the bang-singular
         # structure: zero for the first half, then linearly increasing to U_max/2.
         # This avoids APOPT converging to the u=0 trivial local minimum.
-        t_grid  = np.linspace(0.0, cfg.T, N)
-        u_init  = np.where(t_grid < cfg.T / 2, 0.0,
-                           cfg.U_max / 2 * (t_grid - cfg.T / 2) / (cfg.T / 2))
+        t_grid = np.linspace(0.0, cfg.T, N)
+        u_init = np.where(
+            t_grid < cfg.T / 2, 0.0, cfg.U_max / 2 * (t_grid - cfg.T / 2) / (cfg.T / 2)
+        )
         u = m.MV(value=u_init, lb=0.0, ub=cfg.U_max, name="u")
         u.STATUS = 1
         u.DCOST = 0.0  # No penalty on control variation
@@ -127,10 +131,14 @@ class GekkoOptimiser:
         # singular_eps << F_bar so the regularisation is negligible in practice.
         denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
         numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
-        denom = denom_E * (
-            (1.0 - p.nu) * p.nu_E * p.beta_E * F
-            + p.delta_M * p.gamma_s * Ms * denom_E
-        ) + self.num_config.singular_eps
+        denom = (
+            denom_E
+            * (
+                (1.0 - p.nu) * p.nu_E * p.beta_E * F
+                + p.delta_M * p.gamma_s * Ms * denom_E
+            )
+            + self.num_config.singular_eps
+        )
 
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
@@ -149,7 +157,7 @@ class GekkoOptimiser:
         # ODE rtol). Almeida et al. (2022) use 1e-6; both are driven by the
         # documented apopt_rtol knob so no convergence tolerance is hidden.
         m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
-        m.options.IMODE = 6   # Dynamic optimal control
+        m.options.IMODE = 6  # Dynamic optimal control
         m.options.RTOL = self.num_config.apopt_rtol
         m.options.OTOL = self.num_config.apopt_rtol  # objective tol (same knob)
 
@@ -169,7 +177,8 @@ class GekkoOptimiser:
 
         logger.info(
             "L1 problem solved in %.2fs with J(u*) = %.4e",
-            wall_time, cost,
+            wall_time,
+            cost,
         )
 
         return OptimisationResult(
@@ -185,7 +194,7 @@ class GekkoOptimiser:
     def solve_L1_warmstart(
         self,
         control_config: ControlConfig,
-        u_init: tuple[NDArray, NDArray],
+        u_init: tuple[NDArray[np.float64], NDArray[np.float64]],
     ) -> OptimisationResult:
         """Solve the L1 problem with a custom control warm-start.
 
@@ -213,15 +222,18 @@ class GekkoOptimiser:
 
         logger.info(
             "Solving L1 (warm-start) with T=%g, U_max=%g, epsilon=%g, N=%d",
-            cfg.T, cfg.U_max, epsilon, N,
+            cfg.T,
+            cfg.U_max,
+            epsilon,
+            N,
         )
 
         m = GEKKO(remote=False)
         m.time = np.linspace(0.0, cfg.T, N)
 
-        F  = m.Var(value=p.F_bar, lb=0.0, name="F")
-        Ms = m.Var(value=0.0,     lb=0.0, name="Ms")
-        m.fix_initial(F,  val=p.F_bar)
+        F = m.Var(value=p.F_bar, lb=0.0, name="F")
+        Ms = m.Var(value=0.0, lb=0.0, name="Ms")
+        m.fix_initial(F, val=p.F_bar)
         m.fix_initial(Ms, val=0.0)
 
         # Interpolate provided warm-start onto GEKKO grid
@@ -234,10 +246,14 @@ class GekkoOptimiser:
 
         denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
         numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
-        denom = denom_E * (
-            (1.0 - p.nu) * p.nu_E * p.beta_E * F
-            + p.delta_M * p.gamma_s * Ms * denom_E
-        ) + self.num_config.singular_eps
+        denom = (
+            denom_E
+            * (
+                (1.0 - p.nu) * p.nu_E * p.beta_E * F
+                + p.delta_M * p.gamma_s * Ms * denom_E
+            )
+            + self.num_config.singular_eps
+        )
 
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
@@ -270,7 +286,8 @@ class GekkoOptimiser:
 
         logger.info(
             "L1 warm-start solved in %.2fs with J(u*) = %.4e",
-            wall_time, cost,
+            wall_time,
+            cost,
         )
 
         return OptimisationResult(
@@ -343,22 +360,27 @@ class GekkoOptimiser:
 
         logger.info(
             "Solving L2 problem with T=%g, U_max=%g, epsilon=%g, c=%g, N=%d",
-            cfg.T, cfg.U_max, epsilon, c_weight, N,
+            cfg.T,
+            cfg.U_max,
+            epsilon,
+            c_weight,
+            N,
         )
 
         m = GEKKO(remote=False)
         m.time = np.linspace(0.0, cfg.T, N)
 
         # State variables — initial conditions fixed explicitly
-        F  = m.Var(value=p.F_bar, lb=0.0, name="F")
-        Ms = m.Var(value=0.0,     lb=0.0, name="Ms")
-        m.fix_initial(F,  val=p.F_bar)
+        F = m.Var(value=p.F_bar, lb=0.0, name="F")
+        Ms = m.Var(value=0.0, lb=0.0, name="Ms")
+        m.fix_initial(F, val=p.F_bar)
         m.fix_initial(Ms, val=0.0)
 
         # Control variable — ramp warm-start to avoid trivial u=0 local minimum
         t_grid = np.linspace(0.0, cfg.T, N)
-        u_init = np.where(t_grid < cfg.T / 2, 0.0,
-                          cfg.U_max / 2 * (t_grid - cfg.T / 2) / (cfg.T / 2))
+        u_init = np.where(
+            t_grid < cfg.T / 2, 0.0, cfg.U_max / 2 * (t_grid - cfg.T / 2) / (cfg.T / 2)
+        )
         u = m.MV(value=u_init, lb=0.0, ub=cfg.U_max, name="u")
         u.STATUS = 1
         u.DCOST = 0.0
@@ -366,10 +388,14 @@ class GekkoOptimiser:
         # System dynamics — identical to S1 in solve_L1 (regularised denom)
         denom_E = p.beta_E * F / p.K + p.nu_E + p.delta_E
         numerator = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
-        denom = denom_E * (
-            (1.0 - p.nu) * p.nu_E * p.beta_E * F
-            + p.delta_M * p.gamma_s * Ms * denom_E
-        ) + self.num_config.singular_eps
+        denom = (
+            denom_E
+            * (
+                (1.0 - p.nu) * p.nu_E * p.beta_E * F
+                + p.delta_M * p.gamma_s * Ms * denom_E
+            )
+            + self.num_config.singular_eps
+        )
 
         m.Equation(F.dt() == numerator / denom - p.delta_F * F)
         m.Equation(Ms.dt() == u - p.delta_s * Ms)
@@ -385,7 +411,7 @@ class GekkoOptimiser:
 
         # Solver configuration (apopt_rtol separate from ODE rtol)
         m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
-        m.options.IMODE = 6    # Dynamic optimal control
+        m.options.IMODE = 6  # Dynamic optimal control
         m.options.RTOL = self.num_config.apopt_rtol
         m.options.OTOL = self.num_config.apopt_rtol  # objective tol (same knob)
 
@@ -405,7 +431,8 @@ class GekkoOptimiser:
 
         logger.info(
             "L2 problem solved in %.2fs with J2(u*) = %.4e",
-            wall_time, cost,
+            wall_time,
+            cost,
         )
 
         return OptimisationResult(

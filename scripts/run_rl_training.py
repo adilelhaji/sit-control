@@ -32,44 +32,60 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=Path("results/rl"))
     parser.add_argument(
-        "--algorithm", choices=["PPO", "SAC"], default="PPO",
+        "--algorithm",
+        choices=["PPO", "SAC"],
+        default="PPO",
     )
     parser.add_argument("--timesteps", type=int, default=1_000_000)
-    parser.add_argument("--n-envs", type=int, default=16,
-                        help="Parallel environments (PPO only)")
+    parser.add_argument(
+        "--n-envs", type=int, default=16, help="Parallel environments (PPO only)"
+    )
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--batch-size", type=int, default=64,
+        "--batch-size",
+        type=int,
+        default=64,
         help="PPO minibatch size; a larger value (e.g. 256) lowers gradient "
-             "variance and stabilises training across seeds.",
+        "variance and stabilises training across seeds.",
     )
     parser.add_argument(
-        "--lr-schedule", choices=["constant", "linear"], default="constant",
+        "--lr-schedule",
+        choices=["constant", "linear"],
+        default="constant",
         help="PPO learning-rate schedule; 'linear' decays to 0 over training "
-             "(standard PPO stabiliser, reduces seed-to-seed variance).",
+        "(standard PPO stabiliser, reduces seed-to-seed variance).",
     )
     parser.add_argument(
-        "--ent-coef", type=float, default=0.0,
+        "--ent-coef",
+        type=float,
+        default=0.0,
         help="PPO entropy coefficient; use >0 (e.g. 0.01) to encourage "
-             "exploration and avoid the 'release nothing' collapse. Ignored "
-             "by SAC (entropy auto-tuned).",
+        "exploration and avoid the 'release nothing' collapse. Ignored "
+        "by SAC (entropy auto-tuned).",
     )
     parser.add_argument(
-        "--terminal-penalty", type=float, default=1.0,
+        "--terminal-penalty",
+        type=float,
+        default=1.0,
         help="Weight of the squared terminal-constraint violation in the "
-             "reward; larger values push the agent harder toward F(T)<=eps.",
+        "reward; larger values push the agent harder toward F(T)<=eps.",
     )
     parser.add_argument(
-        "--randomize-low", type=float, default=0.7,
+        "--randomize-low",
+        type=float,
+        default=0.7,
         help="Lower factor for domain randomization (default 0.7)",
     )
     parser.add_argument(
-        "--randomize-high", type=float, default=1.3,
+        "--randomize-high",
+        type=float,
+        default=1.3,
         help="Upper factor for domain randomization (default 1.3)",
     )
     parser.add_argument(
-        "--no-randomize", action="store_true",
+        "--no-randomize",
+        action="store_true",
         help="Disable domain randomization (train on nominal parameters only)",
     )
     return parser.parse_args(argv)
@@ -106,8 +122,9 @@ def main(argv: list[str] | None = None) -> int:
     logger.info("Timesteps:           %d", args.timesteps)
     logger.info("Domain randomization: %s", "ON" if rl_cfg.randomize else "OFF")
     if rl_cfg.randomize:
-        logger.info("  range:             [%.2f, %.2f] x nominal",
-                    *rl_cfg.randomize_range)
+        logger.info(
+            "  range:             [%.2f, %.2f] x nominal", *rl_cfg.randomize_range
+        )
         logger.info("  params:            %s", ", ".join(rl_cfg.randomize_params))
     logger.info("Output:              %s", args.output)
     logger.info("")
