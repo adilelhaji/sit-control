@@ -46,7 +46,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _interp_F(t_source: np.ndarray, F_source: np.ndarray, t_target: np.ndarray) -> np.ndarray:
+def _interp_F(
+    t_source: np.ndarray, F_source: np.ndarray, t_target: np.ndarray
+) -> np.ndarray:
     """Linear interpolation of F onto a target time grid (clipped at boundaries)."""
     return np.interp(t_target, t_source, F_source)
 
@@ -66,15 +68,25 @@ def main() -> None:
     epsilon = bio.F_bar / 4.0
     logger.info(
         "F_bar=%.2f | epsilon=%.2f | T=%.0f | U_max=%.0f | K=%.0f",
-        bio.F_bar, epsilon, args.T, cfg.U_max, bio.K,
+        bio.F_bar,
+        epsilon,
+        args.T,
+        cfg.U_max,
+        bio.K,
     )
 
     # ── 1. Solve optimum on S1 by bisection (Algorithm 2 of Almeida 2022) ────
     logger.info("Solving bisection on S1 ...")
     bis = solve_by_bisection(bio, cfg)
     logger.info(
-        "Bisection: tau1=%.2fd  tau2=%.2fd  t0=%.2fd  t1=%.2fd  F_min=%.2f  converged=%s",
-        bis.tau1, bis.tau2, bis.t0, bis.t1, bis.F_min, bis.converged,
+        "Bisection: tau1=%.2fd  tau2=%.2fd  t0=%.2fd  t1=%.2fd  "
+        "F_min=%.2f  converged=%s",
+        bis.tau1,
+        bis.tau2,
+        bis.t0,
+        bis.t1,
+        bis.F_min,
+        bis.converged,
     )
 
     # Reconstruct the full u*(t) profile via the 3-phase formula (9)
@@ -100,7 +112,10 @@ def main() -> None:
 
     logger.info(
         "Comparison: F_S1(T)=%.2f  F_S2(T)=%.2f  max_rel=%.3f%%  mean_rel=%.3f%%",
-        F_s1_T, F_s2_T, max_rel, mean_rel,
+        F_s1_T,
+        F_s2_T,
+        max_rel,
+        mean_rel,
     )
 
     # ── 4. Plot: two trajectories, one panel ─────────────────────────────────
@@ -109,8 +124,13 @@ def main() -> None:
     fig, ax = plt.subplots(figsize=(8.0, 4.5))
     ax.plot(t_s1, F_s1, color="C0", lw=2.2, label=r"$F_{S_1}(t)$")
     ax.plot(t_s2, F_s2, color="C3", lw=2.2, linestyle="--", label=r"$F_{S_2}(t)$")
-    ax.axhline(epsilon, color="0.35", lw=1.0, linestyle=":",
-               label=fr"$\varepsilon = \bar{{F}}/4 = {epsilon:.0f}$")
+    ax.axhline(
+        epsilon,
+        color="0.35",
+        lw=1.0,
+        linestyle=":",
+        label=rf"$\varepsilon = \bar{{F}}/4 = {epsilon:.0f}$",
+    )
 
     ax.set_xlabel("Time (days)")
     ax.set_ylabel("Fertile females $F(t)$")
@@ -119,8 +139,8 @@ def main() -> None:
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper right", framealpha=0.95)
     ax.set_title(
-        fr"$F(t)$ under $u^*(t)$ (bisection): $S_1$ vs. $S_2$  —  "
-        fr"max. rel. error $= {max_rel:.2f}\,\%$"
+        rf"$F(t)$ under $u^*(t)$ (bisection): $S_1$ vs. $S_2$  —  "
+        rf"max. rel. error $= {max_rel:.2f}\,\%$"
     )
     fig.tight_layout()
 

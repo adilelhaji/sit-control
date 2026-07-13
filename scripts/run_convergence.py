@@ -41,15 +41,21 @@ REFERENCE_COST = 1.46e5
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--config", type=Path, required=True,
+        "--config",
+        type=Path,
+        required=True,
         help="YAML configuration file",
     )
     parser.add_argument(
-        "--output", type=Path, default=Path("results"),
+        "--output",
+        type=Path,
+        default=Path("results"),
         help="Output directory",
     )
     parser.add_argument(
-        "--N-values", type=int, nargs="+",
+        "--N-values",
+        type=int,
+        nargs="+",
         default=[50, 100, 200, 400],
         help="Discretisation sizes to evaluate",
     )
@@ -70,7 +76,9 @@ def main() -> None:
 
     logger.info(
         "Convergence study: T=%g, U_max=%g, N=%s",
-        control_cfg.T, control_cfg.U_max, args.N_values,
+        control_cfg.T,
+        control_cfg.U_max,
+        args.N_values,
     )
 
     for N in args.N_values:
@@ -100,7 +108,9 @@ def main() -> None:
 
         logger.info(
             "N=%4d: J=%.4e, t=%6.2fs (ref %s)",
-            N, result.cost, result.wall_time,
+            N,
+            result.cost,
+            result.wall_time,
             f"{ref_time:.2f}s" if ref_time else "n/a",
         )
 
@@ -108,15 +118,14 @@ def main() -> None:
     out_json.write_text(json.dumps(results, indent=2))
     logger.info("Numerical results written to %s", out_json)
 
-    fig = plot_convergence(
+    plot_convergence(
         N_values=np.array(args.N_values),
         costs=np.array(costs),
         times=np.array(times),
         reference_cost=REFERENCE_COST,
         save_path=args.output / "convergence.pdf",
     )
-    logger.info("Convergence figure saved to %s",
-                args.output / "convergence.pdf")
+    logger.info("Convergence figure saved to %s", args.output / "convergence.pdf")
 
 
 if __name__ == "__main__":

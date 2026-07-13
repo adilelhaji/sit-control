@@ -52,8 +52,8 @@ logger = logging.getLogger(__name__)
 # Parameters to vary and their display names
 SENSITIVITY_PARAMS: dict[str, str] = {
     "delta_F": r"$\delta_F$",
-    "nu_E":    r"$\nu_E$",
-    "K":       r"$K$",
+    "nu_E": r"$\nu_E$",
+    "K": r"$K$",
 }
 PERTURBATION_LEVELS = (-0.20, +0.20)
 
@@ -62,7 +62,10 @@ PERTURBATION_LEVELS = (-0.20, +0.20)
 # Core helpers
 # ---------------------------------------------------------------------------
 
-def _perturb(params: BiologicalParameters, param: str, factor: float) -> BiologicalParameters:
+
+def _perturb(
+    params: BiologicalParameters, param: str, factor: float
+) -> BiologicalParameters:
     """Return a copy of params with one field multiplied by (1 + factor).
 
     Parameters
@@ -177,7 +180,11 @@ def run_sensitivity(
     perturbations: dict[str, Any] = {}
     for param, label in params_to_vary.items():
         baseline_val = getattr(baseline_params, param)
-        perturbations[param] = {"label": label, "baseline_value": baseline_val, "runs": {}}
+        perturbations[param] = {
+            "label": label,
+            "baseline_value": baseline_val,
+            "runs": {},
+        }
 
         for level in levels:
             pct = int(round(level * 100))
@@ -186,7 +193,10 @@ def run_sensitivity(
             perturbed_val = getattr(perturbed, param)
             logger.info(
                 "  %s = %.4g → %.4g (%s)",
-                param, baseline_val, perturbed_val, key,
+                param,
+                baseline_val,
+                perturbed_val,
+                key,
             )
             m = _run_one(perturbed, num_cfg, control_cfg, fixed_epsilon)
             m["perturbed_value"] = perturbed_val
@@ -199,6 +209,7 @@ def run_sensitivity(
 # ---------------------------------------------------------------------------
 # Tornado chart
 # ---------------------------------------------------------------------------
+
 
 def plot_tornado(
     sensitivity: dict[str, Any],
@@ -221,7 +232,6 @@ def plot_tornado(
     matplotlib Figure.
     """
     perturbations = sensitivity["perturbations"]
-    J0 = sensitivity["baseline"]["J"]
 
     param_names = list(perturbations.keys())
     n = len(param_names)
@@ -247,12 +257,20 @@ def plot_tornado(
 
     bar_h = 0.35
     ax.barh(
-        y_pos + bar_h / 2, low_vals, height=bar_h,
-        color="C0", alpha=0.75, label="−20 % perturbation",
+        y_pos + bar_h / 2,
+        low_vals,
+        height=bar_h,
+        color="C0",
+        alpha=0.75,
+        label="−20 % perturbation",
     )
     ax.barh(
-        y_pos - bar_h / 2, high_vals, height=bar_h,
-        color="C3", alpha=0.75, label="+20 % perturbation",
+        y_pos - bar_h / 2,
+        high_vals,
+        height=bar_h,
+        color="C3",
+        alpha=0.75,
+        label="+20 % perturbation",
     )
 
     ax.axvline(0.0, color="black", linewidth=1.0)
@@ -269,6 +287,7 @@ def plot_tornado(
 
     if save_path is not None:
         from sit_control.plotting import _save_figure
+
         _save_figure(fig, Path(save_path))
 
     return fig
@@ -277,6 +296,7 @@ def plot_tornado(
 # ---------------------------------------------------------------------------
 # Summary table
 # ---------------------------------------------------------------------------
+
 
 def _print_summary(sensitivity: dict[str, Any]) -> None:
     """Print the sensitivity results as a formatted table to stdout."""
@@ -296,7 +316,7 @@ def _print_summary(sensitivity: dict[str, Any]) -> None:
     print(header)
     print(f"{'-' * len(header)}")
 
-    for param, entry in sensitivity["perturbations"].items():
+    for _param, entry in sensitivity["perturbations"].items():
         label = entry["label"]
         for level_key, m in sorted(entry["runs"].items()):
             t_eps = m.get("t_epsilon_days")
@@ -314,20 +334,26 @@ def _print_summary(sensitivity: dict[str, Any]) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, required=True,
-                        help="YAML configuration file")
-    parser.add_argument("--output", type=Path, default=Path("results"),
-                        help="Output directory")
     parser.add_argument(
-        "--params", nargs="+",
+        "--config", type=Path, required=True, help="YAML configuration file"
+    )
+    parser.add_argument(
+        "--output", type=Path, default=Path("results"), help="Output directory"
+    )
+    parser.add_argument(
+        "--params",
+        nargs="+",
         default=list(SENSITIVITY_PARAMS.keys()),
         choices=list(SENSITIVITY_PARAMS.keys()),
         help="Parameters to vary (default: all three)",
     )
     parser.add_argument(
-        "--levels", type=float, nargs="+",
+        "--levels",
+        type=float,
+        nargs="+",
         default=list(PERTURBATION_LEVELS),
         help="Relative perturbation levels (e.g. -0.2 0.2)",
     )
@@ -350,7 +376,9 @@ def main() -> None:
     )
     logger.info(
         "Sensitivity analysis | epsilon_0 = %.1f, T=%g, U_max=%g",
-        fixed_epsilon, control_cfg.T, control_cfg.U_max,
+        fixed_epsilon,
+        control_cfg.T,
+        control_cfg.U_max,
     )
 
     params_to_vary = {p: SENSITIVITY_PARAMS[p] for p in args.params}

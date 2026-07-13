@@ -39,27 +39,36 @@ logger = logging.getLogger(__name__)
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--model", type=Path, required=True,
-                        help="Path to the trained policy .zip file")
+    parser.add_argument(
+        "--model", type=Path, required=True, help="Path to the trained policy .zip file"
+    )
     parser.add_argument("--output", type=Path, default=Path("results/rl"))
     parser.add_argument("--n-episodes", type=int, default=100)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
-        "--algorithm", choices=["PPO", "SAC"], default="PPO",
+        "--algorithm",
+        choices=["PPO", "SAC"],
+        default="PPO",
         help="Algorithm used to train the model (needed to load it)",
     )
     parser.add_argument(
-        "--randomize-low", type=float, default=0.7,
+        "--randomize-low",
+        type=float,
+        default=0.7,
     )
     parser.add_argument(
-        "--randomize-high", type=float, default=1.3,
+        "--randomize-high",
+        type=float,
+        default=1.3,
     )
     parser.add_argument(
-        "--no-randomize", action="store_true",
+        "--no-randomize",
+        action="store_true",
         help="Evaluate on nominal parameters only (no robustness test)",
     )
     parser.add_argument(
-        "--kfold", action="store_true",
+        "--kfold",
+        action="store_true",
         help="Run K-Fold cross-validation (expensive, trains K models)",
     )
     return parser.parse_args(argv)
@@ -87,9 +96,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.algorithm == "PPO":
         from stable_baselines3 import PPO
+
         model = PPO.load(args.model)
     else:
         from stable_baselines3 import SAC
+
         model = SAC.load(args.model)
 
     logger.info("=" * 70)
@@ -112,10 +123,14 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info("Results")
     logger.info("-------")
-    logger.info("Mean cost J:         %.4e  (std %.4e)",
-                result.mean_cost, result.std_cost)
-    logger.info("Success rate:        %.1f %%  (F(T) <= %.0f)",
-                100.0 * result.success_rate, result.epsilon)
+    logger.info(
+        "Mean cost J:         %.4e  (std %.4e)", result.mean_cost, result.std_cost
+    )
+    logger.info(
+        "Success rate:        %.1f %%  (F(T) <= %.0f)",
+        100.0 * result.success_rate,
+        result.epsilon,
+    )
     logger.info("Mean F(T):           %.1f", result.mean_F_terminal)
 
     args.output.mkdir(parents=True, exist_ok=True)

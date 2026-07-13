@@ -67,7 +67,8 @@ def evaluate_policy(
     Parameters
     ----------
     model
-        A trained SB3 model with a ``predict(obs, deterministic) -> (action, _)`` method.
+        A trained SB3 model exposing
+        ``predict(obs, deterministic) -> (action, _)``.
     nominal_params, control_config, rl_config
         Standard environment configuration. ``rl_config.randomize`` controls
         whether each episode samples a new parameter set.
@@ -93,7 +94,10 @@ def evaluate_policy(
         obs, info = env.reset(seed=seed + episode)
         params = info["params"]
         sampled.append(
-            {name: getattr(params, name) for name in (rl_config or RLConfig()).randomize_params}
+            {
+                name: getattr(params, name)
+                for name in (rl_config or RLConfig()).randomize_params
+            }
         )
 
         terminated = False
@@ -112,7 +116,7 @@ def evaluate_policy(
         epsilons.append(float(env.epsilon))
 
     success_rate = float(
-        np.mean([F <= e for F, e in zip(F_terminals, epsilons)])
+        np.mean([e >= F for F, e in zip(F_terminals, epsilons, strict=True)])
     )
     epsilon = float(np.mean(epsilons))
 
@@ -215,15 +219,25 @@ def kfold_evaluate(
 
     per_fold: list[dict[str, float]] = []
     for fold_idx, (train_idx, test_idx) in enumerate(kf.split(theta)):
-        logger.info("Fold %d/%d: |train|=%d  |test|=%d",
-                    fold_idx + 1, n_folds, len(train_idx), len(test_idx))
+        logger.info(
+            "Fold %d/%d: |train|=%d  |test|=%d",
+            fold_idx + 1,
+            n_folds,
+            len(train_idx),
+            len(test_idx),
+        )
         train_pool = theta[train_idx]
         test_pool = theta[test_idx]
 
         model = train_fn(train_pool)
         fold_result = _evaluate_on_pool(
-            model, nominal_params, control_config, rl_cfg, test_pool,
-            n_episodes=n_eval_per_fold, seed=seed + 1000 * fold_idx,
+            model,
+            nominal_params,
+            control_config,
+            rl_cfg,
+            test_pool,
+            n_episodes=n_eval_per_fold,
+            seed=seed + 1000 * fold_idx,
         )
         per_fold.append(
             {
@@ -302,7 +316,7 @@ def _evaluate_on_pool(
         if control_config.epsilon is not None
         else float(nominal_params.F_bar / 4.0)
     )
-    success_rate = float(np.mean([F <= epsilon for F in F_terminals]))
+    success_rate = float(np.mean([epsilon >= F for F in F_terminals]))
 
     return EvaluationResult(
         n_episodes=n_episodes,

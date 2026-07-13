@@ -6,23 +6,24 @@ import pytest
 
 from main import build_parser
 
-
 # ---------------------------------------------------------------------------
 # Parser structure
 # ---------------------------------------------------------------------------
 
+
 def test_parser_has_expected_subcommands() -> None:
     """The top-level parser must expose all expected subcommands."""
     parser = build_parser()
-    subparsers_actions = [
-        a for a in parser._actions
-        if hasattr(a, "_name_parser_map")
-    ]
+    subparsers_actions = [a for a in parser._actions if hasattr(a, "_name_parser_map")]
     assert len(subparsers_actions) == 1
     sub_map = subparsers_actions[0]._name_parser_map
     expected = {
-        "verify", "convergence", "strategies", "sensitivity",
-        "rl-train", "rl-eval",
+        "verify",
+        "convergence",
+        "strategies",
+        "sensitivity",
+        "rl-train",
+        "rl-eval",
     }
     assert set(sub_map.keys()) == expected
 
@@ -30,9 +31,13 @@ def test_parser_has_expected_subcommands() -> None:
 def test_rl_train_defaults() -> None:
     """'rl-train' should default to PPO + 1e6 timesteps + randomization ON."""
     parser = build_parser()
-    args = parser.parse_args([
-        "rl-train", "--config", "configs/almeida2022.yaml",
-    ])
+    args = parser.parse_args(
+        [
+            "rl-train",
+            "--config",
+            "configs/almeida2022.yaml",
+        ]
+    )
     assert args.algorithm == "PPO"
     assert args.timesteps == 1_000_000
     assert args.n_envs == 16
@@ -76,9 +81,15 @@ def test_strategies_default_tau_values() -> None:
 def test_strategies_custom_tau_optimal() -> None:
     """'strategies --tau-optimal 14' should set tau_optimal = 14."""
     parser = build_parser()
-    args = parser.parse_args([
-        "strategies", "--config", "c.yaml", "--tau-optimal", "14",
-    ])
+    args = parser.parse_args(
+        [
+            "strategies",
+            "--config",
+            "c.yaml",
+            "--tau-optimal",
+            "14",
+        ]
+    )
     assert args.tau_optimal == pytest.approx(14.0)
 
 
@@ -99,9 +110,16 @@ def test_sensitivity_default_levels() -> None:
 def test_sensitivity_custom_params() -> None:
     """Passing '--params delta_F K' should restrict to those two parameters."""
     parser = build_parser()
-    args = parser.parse_args([
-        "sensitivity", "--config", "c.yaml", "--params", "delta_F", "K",
-    ])
+    args = parser.parse_args(
+        [
+            "sensitivity",
+            "--config",
+            "c.yaml",
+            "--params",
+            "delta_F",
+            "K",
+        ]
+    )
     assert set(args.params) == {"delta_F", "K"}
     assert "nu_E" not in args.params
 
@@ -110,9 +128,15 @@ def test_sensitivity_invalid_param_rejected() -> None:
     """An unrecognised parameter name should cause a non-zero exit."""
     parser = build_parser()
     with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args([
-            "sensitivity", "--config", "c.yaml", "--params", "gamma_s",
-        ])
+        parser.parse_args(
+            [
+                "sensitivity",
+                "--config",
+                "c.yaml",
+                "--params",
+                "gamma_s",
+            ]
+        )
     assert exc_info.value.code != 0
 
 

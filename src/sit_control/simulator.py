@@ -8,8 +8,9 @@ the choice of control law.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -116,7 +117,9 @@ class Simulator:
 
         logger.debug(
             "Integrating %s on [0, %g] with %d evaluation points",
-            model, T, n_eval,
+            model,
+            T,
+            n_eval,
         )
 
         sol = solve_ivp(

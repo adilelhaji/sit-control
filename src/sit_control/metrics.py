@@ -74,7 +74,7 @@ def suppression_time(
     Returns:
         Smallest t such that F(t) <= epsilon + tol, or None if never reached.
     """
-    indices = np.where(F <= epsilon + tol)[0]
+    indices = np.where(epsilon + tol >= F)[0]
     if len(indices) == 0:
         return None
     return float(t[indices[0]])

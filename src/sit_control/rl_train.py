@@ -14,13 +14,17 @@ Raffin et al. (2021). Stable-Baselines3. J. Mach. Learn. Res. 22, 1-8.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from .parameters import BiologicalParameters, ControlConfig
 from .rl_env import RLConfig, make_env
+
+if TYPE_CHECKING:
+    from stable_baselines3.common.base_class import BaseAlgorithm
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +68,7 @@ class TrainingConfig:
     policy_kwargs: dict[str, Any] | None = None
 
 
-def _linear_schedule(initial: float):
+def _linear_schedule(initial: float) -> Callable[[float], float]:
     """Return an SB3 schedule that decays linearly from `initial` to 0.
 
     SB3 calls the schedule with `progress_remaining` in [1, 0]. A linear decay
@@ -72,8 +76,10 @@ def _linear_schedule(initial: float):
     training policy drift that, with a constant rate, makes some seeds diverge
     to poor optima (high seed-to-seed variance).
     """
+
     def _f(progress_remaining: float) -> float:
         return progress_remaining * initial
+
     return _f
 
 
@@ -127,8 +133,12 @@ def train(
         # observation is already normalized inside the env (F/F_bar, Ms/scale,
         # t/T), so evaluation needs no normalization stats.
         from stable_baselines3.common.vec_env import VecNormalize
+
         vec_env = VecNormalize(
-            vec_env, norm_obs=False, norm_reward=True, gamma=0.99,
+            vec_env,
+            norm_obs=False,
+            norm_reward=True,
+            gamma=0.99,
         )
         policy_kwargs = train_cfg.policy_kwargs or {"net_arch": [64, 64, 64]}
         lr = (
@@ -136,7 +146,7 @@ def train(
             if train_cfg.lr_schedule == "linear"
             else train_cfg.learning_rate
         )
-        model = PPO(
+        model: BaseAlgorithm = PPO(
             "MlpPolicy",
             vec_env,
             learning_rate=lr,
@@ -176,7 +186,8 @@ def train(
 
     logger.info(
         "Training %s for %d timesteps on %d envs (seed=%d)",
-        train_cfg.algorithm, train_cfg.total_timesteps,
+        train_cfg.algorithm,
+        train_cfg.total_timesteps,
         train_cfg.n_envs if train_cfg.algorithm == "PPO" else 1,
         train_cfg.seed,
     )

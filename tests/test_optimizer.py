@@ -102,9 +102,7 @@ def test_L1_cost_constant_for_large_T(optimiser: GekkoOptimiser) -> None:
     r_200 = optimiser.solve_L1(cfg_200)
 
     rel_diff = abs(r_150.cost - r_200.cost) / r_150.cost
-    assert rel_diff < 0.02, (
-        f"J(u*) differs by {rel_diff:.2%} between T=150 and T=200"
-    )
+    assert rel_diff < 0.02, f"J(u*) differs by {rel_diff:.2%} between T=150 and T=200"
 
 
 def test_invalid_T_raises() -> None:
@@ -128,6 +126,7 @@ def test_invalid_epsilon_raises() -> None:
 # ---------------------------------------------------------------------------
 # solve_L2 tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.slow
 def test_L2_returns_result(optimiser: GekkoOptimiser) -> None:
@@ -185,6 +184,7 @@ def test_L2_smoother_than_L1(optimiser: GekkoOptimiser) -> None:
 def test_L2_cost_is_quadratic_functional(optimiser: GekkoOptimiser) -> None:
     """The stored cost should equal (1/2)*integral(u^2) with c=1."""
     import numpy as np
+
     cfg = ControlConfig(T=150.0, U_max=5000.0)
     result = optimiser.solve_L2(cfg, c_weight=1.0)
     expected = float(np.trapezoid(0.5 * result.u_opt**2, result.t))

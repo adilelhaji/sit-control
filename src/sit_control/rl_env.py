@@ -68,7 +68,7 @@ class RLConfig:
     fixed_epsilon: bool = True
 
 
-class SITEnv(gym.Env):
+class SITEnv(gym.Env[Any, Any]):
     """Gymnasium environment wrapping the S1 SIT model for RL training.
 
     Observation
@@ -109,9 +109,7 @@ class SITEnv(gym.Env):
         self.rl_cfg: RLConfig = rl_config or RLConfig()
 
         self._F_scale: float = float(nominal_params.F_bar)
-        self._Ms_scale: float = float(
-            control_config.U_max / nominal_params.delta_s
-        )
+        self._Ms_scale: float = float(control_config.U_max / nominal_params.delta_s)
         self._epsilon_nominal: float = (
             float(control_config.epsilon)
             if control_config.epsilon is not None
@@ -119,7 +117,10 @@ class SITEnv(gym.Env):
         )
 
         self.action_space = spaces.Box(
-            low=0.0, high=1.0, shape=(1,), dtype=np.float32,
+            low=0.0,
+            high=1.0,
+            shape=(1,),
+            dtype=np.float32,
         )
         self.observation_space = spaces.Box(
             low=np.array([0.0, 0.0, 0.0], dtype=np.float32),
@@ -133,7 +134,8 @@ class SITEnv(gym.Env):
         self.cumulative_cost: float = 0.0
 
     def _sample_params(
-        self, rng: np.random.Generator,
+        self,
+        rng: np.random.Generator,
     ) -> BiologicalParameters:
         """Sample a perturbed parameter set for domain randomization."""
         if not self.rl_cfg.randomize:
@@ -154,7 +156,8 @@ class SITEnv(gym.Env):
         super().reset(seed=seed)
         self.params = self._sample_params(self.np_random)
         self.state = np.array(
-            [self.params.F_bar, 0.0], dtype=np.float64,
+            [self.params.F_bar, 0.0],
+            dtype=np.float64,
         )
         self.t = 0.0
         self.cumulative_cost = 0.0

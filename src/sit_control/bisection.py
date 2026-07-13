@@ -18,9 +18,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import solve_ivp
 
-from .controls import constant_control, interpolated_control
 from .model import recruitment
-from .parameters import BiologicalParameters, ControlConfig
+from .parameters import BiologicalParameters, ControlConfig, NumericalConfig
 from .simulator import Simulator
 
 logger = logging.getLogger(__name__)
@@ -77,9 +76,7 @@ def singular_control(
         return 0.0
 
     f_value = _compute_f(F, Ms, params)
-    numerator = (
-        df_dMs * df_dF + d2f_dMs2 * p.delta_s * Ms - d2f_dMsdF * f_value
-    )
+    numerator = df_dMs * df_dF + d2f_dMs2 * p.delta_s * Ms - d2f_dMsdF * f_value
     return numerator / d2f_dMs2
 
 
@@ -123,25 +120,25 @@ def _compute_partials(
     Returns:
         (df/dF, df/dMs, d²f/dMs², d²f/dMs dF)
     """
-    F  = max(F, 1e-12)
+    F = max(F, 1e-12)
     Ms = max(Ms, 0.0)
 
     # ── Intermediate quantities ───────────────────────────────────────────
-    dE  = p.beta_E * F / p.K + p.nu_E + p.delta_E          # D_E
-    A   = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
-    B   = (1.0 - p.nu) * p.nu_E * p.beta_E * F
-    Cs  = p.delta_M * p.gamma_s * Ms
-    D   = dE * (B + Cs * dE)
+    dE = p.beta_E * F / p.K + p.nu_E + p.delta_E  # D_E
+    A = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
+    B = (1.0 - p.nu) * p.nu_E * p.beta_E * F
+    Cs = p.delta_M * p.gamma_s * Ms
+    D = dE * (B + Cs * dE)
 
     if D < 1e-30:
         return -p.delta_F, 0.0, 0.0, 0.0
 
     # ── Derivatives of intermediates w.r.t. F ────────────────────────────
     ddE_dF = p.beta_E / p.K
-    dA_dF  = 2.0 * p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F
-    dB_dF  = (1.0 - p.nu) * p.nu_E * p.beta_E
+    dA_dF = 2.0 * p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F
+    dB_dF = (1.0 - p.nu) * p.nu_E * p.beta_E
     # D = dE*(B + Cs*dE)  →  dD/dF = ddE_dF*(B+Cs*dE) + dE*(dB_dF+Cs*ddE_dF)
-    dD_dF  = ddE_dF * (B + Cs * dE) + dE * (dB_dF + Cs * ddE_dF)
+    dD_dF = ddE_dF * (B + Cs * dE) + dE * (dB_dF + Cs * ddE_dF)
 
     # D w.r.t. Ms:  dD/dMs = delta_M*gamma_s * dE^2
     dD_dMs = p.delta_M * p.gamma_s * dE**2
@@ -153,10 +150,11 @@ def _compute_partials(
     df_dMs = -A * dD_dMs / D**2
 
     # ── ∂²f/∂Ms²  = 2*A*(delta_M*gamma_s)^2 * D_E^4 / D^3 ───────────────
-    d2f_dMs2 = 2.0 * A * (p.delta_M * p.gamma_s)**2 * dE**4 / D**3
+    d2f_dMs2 = 2.0 * A * (p.delta_M * p.gamma_s) ** 2 * dE**4 / D**3
 
     # ── ∂²f/∂Ms∂F  (differentiate ∂f/∂Ms w.r.t. F) ─────────────────────
-    # h(F) = -A*delta_M*gamma_s*D_E^2  →  h'(F) = -delta_M*gamma_s*(A'*dE^2 + 2*A*dE*dE')
+    # h(F) = -A*delta_M*gamma_s*D_E^2
+    #   →  h'(F) = -delta_M*gamma_s*(A'*dE^2 + 2*A*dE*dE')
     h_prime = -p.delta_M * p.gamma_s * (dA_dF * dE**2 + 2.0 * A * dE * ddE_dF)
     d2f_dMsdF = h_prime / D**2 + 2.0 * A * dD_dMs * dD_dF / D**3
 
@@ -167,9 +165,11 @@ def _simulate_singular_from_Fbar(
     params: BiologicalParameters,
     cfg: ControlConfig,
     tau1: float,
-    num_cfg,
+    num_cfg: NumericalConfig,
     n_points: int = 500,
-) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+) -> tuple[
+    NDArray[np.float64], NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]
+]:
     """Simulate singular control for τ₁ days starting from (F̄, 0).
 
     This is the inner simulation of Algorithm 2: it produces the
@@ -188,18 +188,20 @@ def _simulate_singular_from_Fbar(
     # of integrating an empty [0, 0] span, which yields an empty solution and
     # an IndexError downstream.
     if tau1 <= 0.0:
-        u0 = float(np.clip(
-            singular_control(params.F_bar, 0.0, params), 0.0, cfg.U_max
-        ))
-        return (np.array([0.0]), np.array([params.F_bar]),
-                np.array([0.0]), np.array([u0]))
+        u0 = float(np.clip(singular_control(params.F_bar, 0.0, params), 0.0, cfg.U_max))
+        return (
+            np.array([0.0]),
+            np.array([params.F_bar]),
+            np.array([0.0]),
+            np.array([u0]),
+        )
 
-    def _rhs(t: float, state: NDArray) -> NDArray:
-        F_s  = float(max(state[0], 0.0))
+    def _rhs(t: float, state: NDArray[np.float64]) -> NDArray[np.float64]:
+        F_s = float(max(state[0], 0.0))
         Ms_s = float(max(state[1], 0.0))
-        u_s  = float(np.clip(singular_control(F_s, Ms_s, params), 0.0, cfg.U_max))
-        dF   = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
-        dMs  = u_s - params.delta_s * Ms_s
+        u_s = float(np.clip(singular_control(F_s, Ms_s, params), 0.0, cfg.U_max))
+        dF = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
+        dMs = u_s - params.delta_s * Ms_s
         return np.array([dF, dMs], dtype=np.float64)
 
     t_eval = np.linspace(0.0, tau1, max(10, n_points))
@@ -213,15 +215,23 @@ def _simulate_singular_from_Fbar(
         atol=num_cfg.atol,
     )
 
-    t_s  = sol.t
-    F_s  = sol.y[0]
+    t_s = sol.t
+    F_s = sol.y[0]
     Ms_s = sol.y[1]
-    u_s  = np.array([
-        float(np.clip(singular_control(
-            float(max(F_s[i], 0.0)), float(max(Ms_s[i], 0.0)), params
-        ), 0.0, cfg.U_max))
-        for i in range(len(t_s))
-    ])
+    u_s = np.array(
+        [
+            float(
+                np.clip(
+                    singular_control(
+                        float(max(F_s[i], 0.0)), float(max(Ms_s[i], 0.0)), params
+                    ),
+                    0.0,
+                    cfg.U_max,
+                )
+            )
+            for i in range(len(t_s))
+        ]
+    )
     return t_s, F_s, Ms_s, u_s
 
 
@@ -229,8 +239,8 @@ def _find_tau2(
     params: BiologicalParameters,
     cfg: ControlConfig,
     tau1: float,
-    state_at_tau1: NDArray,
-    num_cfg,
+    state_at_tau1: NDArray[np.float64],
+    num_cfg: NumericalConfig,
     extra_time: float | None = None,
 ) -> tuple[float, float]:
     """Find τ₂ = argmin F(t) after applying u=0 from end of singular arc.
@@ -246,11 +256,11 @@ def _find_tau2(
     if extra_time is None:
         extra_time = max(cfg.T, 2.0 * tau1)
 
-    def _rhs_zero(t: float, state: NDArray) -> NDArray:
-        F_s  = float(max(state[0], 0.0))
+    def _rhs_zero(t: float, state: NDArray[np.float64]) -> NDArray[np.float64]:
+        F_s = float(max(state[0], 0.0))
         Ms_s = float(max(state[1], 0.0))
-        dF   = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
-        dMs  = -params.delta_s * Ms_s
+        dF = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
+        dMs = -params.delta_s * Ms_s
         return np.array([dF, dMs], dtype=np.float64)
 
     n_ext = max(200, int(extra_time * 10))
@@ -273,8 +283,8 @@ def _find_tau2(
     # The singular phase min is F_sing[-1] (F is decreasing during singular arc).
     # After the arc, under u=0, F decreases further until it reaches its minimum.
     idx_min = int(np.argmin(F_ext))
-    F_min   = float(F_ext[idx_min])
-    tau2    = float(t_ext[idx_min])  # measured from t=0 (start of singular arc)
+    F_min = float(F_ext[idx_min])
+    tau2 = float(t_ext[idx_min])  # measured from t=0 (start of singular arc)
 
     return tau2, F_min
 
@@ -313,41 +323,54 @@ def solve_by_bisection(
 
     tau1_min, tau1_max = 0.0, cfg.T
     simulator = Simulator(params)
-    num_cfg   = simulator.config
+    num_cfg = simulator.config
 
     logger.info(
         "Starting bisection: T=%g, U_max=%g, epsilon=%g",
-        cfg.T, cfg.U_max, epsilon,
+        cfg.T,
+        cfg.U_max,
+        epsilon,
     )
 
     F_min = params.F_bar
-    tau2  = cfg.T
+    tau2 = cfg.T
 
     for i in range(max_iterations):
         tau1_test = 0.5 * (tau1_min + tau1_max)
 
         # Simulate singular arc from (F̄,0) for tau1_test days
         t_s, F_s, Ms_s, u_s = _simulate_singular_from_Fbar(
-            params, cfg, tau1_test, num_cfg,
+            params,
+            cfg,
+            tau1_test,
+            num_cfg,
         )
         state_end = np.array([float(F_s[-1]), float(Ms_s[-1])], dtype=np.float64)
 
         # Extend with u=0 to find τ₂ = argmin F
         tau2_test, F_min_test = _find_tau2(
-            params, cfg, tau1_test, state_end, num_cfg,
+            params,
+            cfg,
+            tau1_test,
+            state_end,
+            num_cfg,
         )
 
         F_min = F_min_test
 
         logger.debug(
             "iter %d: tau1=%.3f, tau2=%.3f, F_min=%.4f (eps=%.4f)",
-            i, tau1_test, tau2_test, F_min_test, epsilon,
+            i,
+            tau1_test,
+            tau2_test,
+            F_min_test,
+            epsilon,
         )
 
         if abs(F_min_test - epsilon) < tolerance:
             tau2 = tau2_test
-            t0   = cfg.T - tau2
-            t1   = t0 + tau1_test
+            t0 = cfg.T - tau2
+            t1 = t0 + tau1_test
             return BisectionResult(
                 tau1=tau1_test,
                 tau2=tau2,
@@ -366,8 +389,8 @@ def solve_by_bisection(
         tau2 = tau2_test
 
     tau1_final = 0.5 * (tau1_min + tau1_max)
-    t0_final   = cfg.T - tau2
-    t1_final   = t0_final + tau1_final
+    t0_final = cfg.T - tau2
+    t1_final = t0_final + tau1_final
 
     return BisectionResult(
         tau1=tau1_final,
@@ -384,9 +407,9 @@ def build_formula9_trajectory(
     params: BiologicalParameters,
     cfg: ControlConfig,
     bis: BisectionResult,
-    num_cfg,
+    num_cfg: NumericalConfig,
     n_eval: int = 2000,
-) -> tuple[NDArray, NDArray, NDArray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
     """Reconstruct the formula (9) control and state trajectory over [0, T].
 
     The right-aligned three-phase control:
@@ -406,7 +429,7 @@ def build_formula9_trajectory(
         F_traj: female population trajectory
         u_traj: control profile
     """
-    T  = cfg.T
+    T = cfg.T
     t0 = bis.t0
     t1 = bis.t1
 
@@ -420,11 +443,14 @@ def build_formula9_trajectory(
     state_at_t0 = initial.copy()
 
     if t0 > 1e-10:
-        def _rhs_zero(t: float, state: NDArray) -> NDArray:
-            F_s  = float(max(state[0], 0.0))
+
+        def _rhs_zero(t: float, state: NDArray[np.float64]) -> NDArray[np.float64]:
+            F_s = float(max(state[0], 0.0))
             Ms_s = float(max(state[1], 0.0))
-            dF   = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
-            dMs  = -params.delta_s * Ms_s
+            dF = float(
+                recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps)
+            )
+            dMs = -params.delta_s * Ms_s
             return np.array([dF, dMs], dtype=np.float64)
 
         t_eval_1 = np.linspace(0.0, t0, n1)
@@ -437,21 +463,21 @@ def build_formula9_trajectory(
             rtol=num_cfg.rtol,
             atol=num_cfg.atol,
         )
-        t_ph1         = sol1.t
-        F_ph1         = sol1.y[0]
-        u_ph1         = np.zeros_like(sol1.t)
-        state_at_t0   = sol1.y[:, -1].copy()
+        t_ph1 = sol1.t
+        F_ph1 = sol1.y[0]
+        u_ph1 = np.zeros_like(sol1.t)
+        state_at_t0 = sol1.y[:, -1].copy()
 
     # ── Phase 2: singular arc on [t0, t1] ────────────────────────────────
     tau1 = bis.tau1
-    n2   = max(10, int(tau1 / T * n_eval))
+    n2 = max(10, int(tau1 / T * n_eval))
 
-    def _rhs_singular(t: float, state: NDArray) -> NDArray:
-        F_s  = float(max(state[0], 0.0))
+    def _rhs_singular(t: float, state: NDArray[np.float64]) -> NDArray[np.float64]:
+        F_s = float(max(state[0], 0.0))
         Ms_s = float(max(state[1], 0.0))
-        u_s  = float(np.clip(singular_control(F_s, Ms_s, params), 0.0, cfg.U_max))
-        dF   = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
-        dMs  = u_s - params.delta_s * Ms_s
+        u_s = float(np.clip(singular_control(F_s, Ms_s, params), 0.0, cfg.U_max))
+        dF = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
+        dMs = u_s - params.delta_s * Ms_s
         return np.array([dF, dMs], dtype=np.float64)
 
     t_eval_2 = np.linspace(t0, t1, n2)
@@ -467,12 +493,20 @@ def build_formula9_trajectory(
     t_ph2 = sol2.t
     F_ph2 = sol2.y[0]
     Ms_ph2 = sol2.y[1]
-    u_ph2 = np.array([
-        float(np.clip(singular_control(
-            float(max(F_ph2[i], 0.0)), float(max(Ms_ph2[i], 0.0)), params
-        ), 0.0, cfg.U_max))
-        for i in range(len(t_ph2))
-    ])
+    u_ph2 = np.array(
+        [
+            float(
+                np.clip(
+                    singular_control(
+                        float(max(F_ph2[i], 0.0)), float(max(Ms_ph2[i], 0.0)), params
+                    ),
+                    0.0,
+                    cfg.U_max,
+                )
+            )
+            for i in range(len(t_ph2))
+        ]
+    )
     state_at_t1 = sol2.y[:, -1].copy()
 
     # ── Phase 3: u=0 on [t1, T] ──────────────────────────────────────────
@@ -483,11 +517,13 @@ def build_formula9_trajectory(
     if T - t1 > 1e-10:
         n3 = max(2, int((T - t1) / T * n_eval))
 
-        def _rhs_zero3(t: float, state: NDArray) -> NDArray:
-            F_s  = float(max(state[0], 0.0))
+        def _rhs_zero3(t: float, state: NDArray[np.float64]) -> NDArray[np.float64]:
+            F_s = float(max(state[0], 0.0))
             Ms_s = float(max(state[1], 0.0))
-            dF   = float(recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps))
-            dMs  = -params.delta_s * Ms_s
+            dF = float(
+                recruitment(F_s, Ms_s, params, singular_eps=num_cfg.singular_eps)
+            )
+            dMs = -params.delta_s * Ms_s
             return np.array([dF, dMs], dtype=np.float64)
 
         t_eval_3 = np.linspace(t1, T, n3)

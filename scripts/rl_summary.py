@@ -42,14 +42,20 @@ def main(argv: list[str]) -> int:
         nom = _load(d / "eval_nom" / "rl_evaluation.json")
         if dr is None:
             continue
-        rows.append({
-            "config": m.group(1),
-            "seed": int(m.group(2)),
-            "dr_succ": float(dr.get("success_rate", float("nan"))),
-            "dr_cost": float(dr.get("mean_cost", float("nan"))),
-            "nom_succ": float(nom.get("success_rate", float("nan"))) if nom else float("nan"),
-            "nom_cost": float(nom.get("mean_cost", float("nan"))) if nom else float("nan"),
-        })
+        rows.append(
+            {
+                "config": m.group(1),
+                "seed": int(m.group(2)),
+                "dr_succ": float(dr.get("success_rate", float("nan"))),
+                "dr_cost": float(dr.get("mean_cost", float("nan"))),
+                "nom_succ": float(nom.get("success_rate", float("nan")))
+                if nom
+                else float("nan"),
+                "nom_cost": float(nom.get("mean_cost", float("nan")))
+                if nom
+                else float("nan"),
+            }
+        )
 
     if not rows:
         print(f"No evaluated results found under {root}")
@@ -60,13 +66,17 @@ def main(argv: list[str]) -> int:
         groups[r["config"]].append(r)
 
     print(f"\nRL SWEEP — summary ({len(rows)} runs, {len(groups)} configs)\n")
-    hdr = (f"{'config':28} {'n':>2} {'DRsucc_mean':>11} {'DRsucc_std':>10} "
-           f"{'DRsucc_max':>10} {'nom100%':>8} {'DRcost_mean':>12} {'NOMcost_best':>12}")
+    hdr = (
+        f"{'config':28} {'n':>2} {'DRsucc_mean':>11} {'DRsucc_std':>10} "
+        f"{'DRsucc_max':>10} {'nom100%':>8} {'DRcost_mean':>12} {'NOMcost_best':>12}"
+    )
     print(hdr)
     print("-" * len(hdr))
+
     # sort by mean DR success descending
     def _key(item: tuple[str, list[dict]]) -> float:
         return -mean([r["dr_succ"] for r in item[1]])
+
     for cfg, rs in sorted(groups.items(), key=_key):
         ds = [r["dr_succ"] for r in rs]
         n100 = sum(1 for r in rs if r["nom_succ"] >= 0.999)
@@ -74,22 +84,28 @@ def main(argv: list[str]) -> int:
         # best NOM cost among seeds that fully suppress nominally
         succ_costs = [r["nom_cost"] for r in rs if r["nom_succ"] >= 0.999]
         best_nom = min(succ_costs) if succ_costs else float("nan")
-        print(f"{cfg:28} {len(rs):>2} {mean(ds):>11.3f} "
-              f"{(pstdev(ds) if len(ds) > 1 else 0.0):>10.3f} {max(ds):>10.3f} "
-              f"{n100:>8} {drc:>12.3e} {best_nom:>12.3e}")
+        print(
+            f"{cfg:28} {len(rs):>2} {mean(ds):>11.3f} "
+            f"{(pstdev(ds) if len(ds) > 1 else 0.0):>10.3f} {max(ds):>10.3f} "
+            f"{n100:>8} {drc:>12.3e} {best_nom:>12.3e}"
+        )
 
     # best individual policy overall (by DR success, tie-break lower DR cost)
     best = max(rows, key=lambda r: (r["dr_succ"], -r["dr_cost"]))
-    print(f"\nBest individual policy: {best['config']}_s{best['seed']}  "
-          f"DRsucc={best['dr_succ']:.3f}  DRcost={best['dr_cost']:.3e}  "
-          f"NOMsucc={best['nom_succ']:.3f}  NOMcost={best['nom_cost']:.3e}")
+    print(
+        f"\nBest individual policy: {best['config']}_s{best['seed']}  "
+        f"DRsucc={best['dr_succ']:.3f}  DRcost={best['dr_cost']:.3e}  "
+        f"NOMsucc={best['nom_succ']:.3f}  NOMcost={best['nom_cost']:.3e}"
+    )
 
     csv = root / "per_seed.csv"
     with open(csv, "w", encoding="utf-8") as f:
         f.write("config,seed,dr_success,dr_cost,nom_success,nom_cost\n")
         for r in sorted(rows, key=lambda r: (r["config"], r["seed"])):
-            f.write(f"{r['config']},{r['seed']},{r['dr_succ']},{r['dr_cost']},"
-                    f"{r['nom_succ']},{r['nom_cost']}\n")
+            f.write(
+                f"{r['config']},{r['seed']},{r['dr_succ']},{r['dr_cost']},"
+                f"{r['nom_succ']},{r['nom_cost']}\n"
+            )
     print(f"\nPer-seed detail: {csv}")
     return 0
 

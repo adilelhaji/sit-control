@@ -51,15 +51,17 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=Path("Memoria/Chapter5"))
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
-    plt.rcParams.update({"font.size": 11, "axes.grid": True, "grid.alpha": 0.3,
-                         "figure.dpi": 120})
+    plt.rcParams.update(
+        {"font.size": 11, "axes.grid": True, "grid.alpha": 0.3, "figure.dpi": 120}
+    )
 
     # Almeida optimum (bisection) at nominal parameters
     d = load_config(a.config)
     p = BiologicalParameters(**d["biological"])
     num = NumericalConfig(**d["numerical"])
-    cc = ControlConfig(T=150.0, U_max=d["control"]["U_max"],
-                       epsilon=d["control"].get("epsilon"))
+    cc = ControlConfig(
+        T=150.0, U_max=d["control"]["U_max"], epsilon=d["control"].get("epsilon")
+    )
     bis = solve_by_bisection(p, cc)
     t_a, F_a, u_a = build_formula9_trajectory(p, cc, bis, num, n_eval=20000)
     eps = p.F_bar / 4.0
@@ -81,13 +83,27 @@ def main() -> int:
     ys = [mean(agg[tp]["s"]) for tp in tps]
     yerr = [pstdev(agg[tp]["s"]) for tp in tps]
     fig1, ax = plt.subplots(figsize=(7, 5))
-    ax.errorbar(xs, ys, yerr=yerr, fmt="o-", color="#1f77b4", capsize=4, ms=7,
-                lw=1.5, label="RL policy (PPO, ±30 % DR)")
-    for tp, x, y in zip(tps, xs, ys):
+    ax.errorbar(
+        xs,
+        ys,
+        yerr=yerr,
+        fmt="o-",
+        color="#1f77b4",
+        capsize=4,
+        ms=7,
+        lw=1.5,
+        label="RL policy (PPO, ±30 % DR)",
+    )
+    for tp, x, y in zip(tps, xs, ys, strict=False):
         ax.annotate(f"  tp={tp}", (x, y), fontsize=9, va="center")
     ax.axvline(J_a / 1e5, ls="--", color="crimson", lw=1.3)
-    ax.text(J_a / 1e5 + 0.03, 18, "Almeida optimum\n(open-loop, fragile)",
-            color="crimson", fontsize=9)
+    ax.text(
+        J_a / 1e5 + 0.03,
+        18,
+        "Almeida optimum\n(open-loop, fragile)",
+        color="crimson",
+        fontsize=9,
+    )
     ax.set_xlabel(r"Mean cost $J$ under $\pm30\%$  [$\times10^5$ mosquitoes]")
     ax.set_ylabel(r"Success rate under $\pm30\%$  [\%]")
     ax.set_title("Cost–robustness trade-off of the RL policy")
@@ -106,10 +122,12 @@ def main() -> int:
         lbl = "RL policy (3 seeds)" if i == 0 else None
         a1.plot(j["t"], j["F"], color="#1f77b4", alpha=0.7, lw=1.2, label=lbl)
         a2.plot(j["t"], j["u"], color="#1f77b4", alpha=0.7, lw=1.2, label=lbl)
-    a1.plot(t_a, F_a, color="crimson", ls="--", lw=1.8,
-            label="Almeida optimum (open-loop)")
-    a2.plot(t_a, u_a, color="crimson", ls="--", lw=1.8,
-            label="Almeida optimum (open-loop)")
+    a1.plot(
+        t_a, F_a, color="crimson", ls="--", lw=1.8, label="Almeida optimum (open-loop)"
+    )
+    a2.plot(
+        t_a, u_a, color="crimson", ls="--", lw=1.8, label="Almeida optimum (open-loop)"
+    )
     a1.axhline(eps, ls=":", color="grey")
     a1.text(3, eps * 1.25, r"$\varepsilon=\bar F/4$", color="grey", fontsize=9)
     a1.set_xlabel("t (days)")

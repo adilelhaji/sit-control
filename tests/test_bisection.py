@@ -37,6 +37,7 @@ def simulator(params: BiologicalParameters) -> Simulator:
 # singular_control
 # ---------------------------------------------------------------------------
 
+
 def test_singular_control_returns_scalar(params: BiologicalParameters) -> None:
     """singular_control should return a Python float."""
     val = singular_control(params.F_bar / 2, 500.0, params)
@@ -57,6 +58,7 @@ def test_singular_control_degenerate_curvature(
     """When d2f_dMs2 ≈ 0, singular_control should return 0 (guarded path)."""
     # Monkey-patch _compute_partials inside bisection to trigger the guard.
     import sit_control.bisection as bmod
+
     original = bmod._compute_partials
 
     def _zero_curvature(F, Ms, p):
@@ -74,6 +76,7 @@ def test_singular_control_degenerate_curvature(
 # ---------------------------------------------------------------------------
 # _simulate_with_tau1
 # ---------------------------------------------------------------------------
+
 
 def test_simulate_tau1_zero_no_suppression(
     params: BiologicalParameters,
@@ -125,6 +128,7 @@ def test_simulate_returns_nonnegative_Fmin(
 # solve_by_bisection
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.slow
 def test_bisection_returns_result(
     params: BiologicalParameters,
@@ -156,7 +160,10 @@ def test_bisection_converges(
 ) -> None:
     """With enough iterations and loose tolerance, bisection should converge."""
     result = solve_by_bisection(
-        params, cfg, max_iterations=40, tolerance=100.0,
+        params,
+        cfg,
+        max_iterations=40,
+        tolerance=100.0,
     )
     assert result.converged
 
@@ -169,7 +176,10 @@ def test_bisection_Fmin_near_epsilon(
     """Converged result should have F_min close to epsilon."""
     epsilon = params.F_bar / 4.0
     result = solve_by_bisection(
-        params, cfg, max_iterations=40, tolerance=50.0,
+        params,
+        cfg,
+        max_iterations=40,
+        tolerance=50.0,
     )
     if result.converged:
         assert abs(result.F_min - epsilon) < 200.0  # 200 females slack
@@ -201,7 +211,9 @@ def _central(g, x, h):
 
 @pytest.mark.parametrize("F, Ms", _PARTIAL_POINTS)
 def test_compute_partials_match_finite_differences(
-    params: BiologicalParameters, F: float, Ms: float,
+    params: BiologicalParameters,
+    F: float,
+    Ms: float,
 ) -> None:
     """The four analytical partials must match central finite differences.
 
@@ -216,12 +228,8 @@ def test_compute_partials_match_finite_differences(
 
     fd_df_dF = _central(lambda x: _compute_f(x, Ms, params), F, hF)
     fd_df_dMs = _central(lambda x: _compute_f(F, x, params), Ms, hM)
-    fd_d2f_dMs2 = _central(
-        lambda x: _compute_partials(F, x, params)[1], Ms, hM
-    )
-    fd_d2f_dMsdF = _central(
-        lambda x: _compute_partials(x, Ms, params)[1], F, hF
-    )
+    fd_d2f_dMs2 = _central(lambda x: _compute_partials(F, x, params)[1], Ms, hM)
+    fd_d2f_dMsdF = _central(lambda x: _compute_partials(x, Ms, params)[1], F, hF)
 
     assert df_dF == pytest.approx(fd_df_dF, rel=1e-4)
     assert df_dMs == pytest.approx(fd_df_dMs, rel=1e-4)

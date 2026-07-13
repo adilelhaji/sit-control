@@ -6,7 +6,7 @@ build-backend = "poetry.core.masonry.api"
 name = "sit-control"
 version = "0.1.0"
 description = "Optimal control for the sterile insect technique (SIT)"
-authors = ["Adil <tu@email.com>"]
+authors = ["Adil El Haji <adilelhaji@gmail.com>"]
 readme = "README.md"
 packages = [{include = "sit_control", from = "src"}]
 
@@ -35,12 +35,19 @@ pre-commit = ">=3.5"
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "RET", "SIM"]
+# The model variables follow the mathematical notation of Almeida et al. (2022)
+# on purpose (E, M, F, Ms, T, K, beta_E, delta_F, L1/L2, ...). The pep8-naming
+# rules on variables/arguments/functions/attributes fight that deliberate
+# convention, so they are disabled; class naming (N801) is still enforced.
+ignore = ["N802", "N803", "N806", "N815", "N816"]
 
 [tool.mypy]
 strict = true
-python_version = "3.11"
+python_version = "3.12"
 warn_return_any = true
 disallow_untyped_defs = true
 

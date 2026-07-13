@@ -108,8 +108,8 @@ class ForwardBackwardSweep:
         DE = p.beta_E * F / p.K + p.nu_E + p.delta_E
         num = p.nu * (1.0 - p.nu) * p.beta_E**2 * p.nu_E**2 * F**2
         den = (
-            DE * ((1.0 - p.nu) * p.nu_E * p.beta_E * F
-                  + p.delta_M * p.gamma_s * Ms * DE)
+            DE
+            * ((1.0 - p.nu) * p.nu_E * p.beta_E * F + p.delta_M * p.gamma_s * Ms * DE)
             + self.num_config.singular_eps
         )
         return num / den - p.delta_F * F
@@ -128,35 +128,42 @@ class ForwardBackwardSweep:
 
     def _forward(
         self,
-        t_grid: NDArray,
-        u_grid: NDArray,
-    ) -> tuple[NDArray, NDArray]:
+        t_grid: NDArray[np.float64],
+        u_grid: NDArray[np.float64],
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Integrate state equations forward from (F_bar, 0)."""
         p = self.params
         nc = self.num_config
         u_func = interp1d(
-            t_grid, u_grid, kind="linear",
-            bounds_error=False, fill_value=(u_grid[0], u_grid[-1]),
+            t_grid,
+            u_grid,
+            kind="linear",
+            bounds_error=False,
+            fill_value=(u_grid[0], u_grid[-1]),
         )
 
-        def rhs(t: float, x: list) -> list:
+        def rhs(t: float, x: list[float]) -> list[float]:
             F, Ms = max(x[0], 0.0), max(x[1], 0.0)
             return [self._f1(F, Ms), u_func(t) - p.delta_s * Ms]
 
         sol = solve_ivp(
-            rhs, [t_grid[0], t_grid[-1]], [p.F_bar, 0.0],
-            t_eval=t_grid, method=nc.solver_method,
-            rtol=nc.rtol, atol=nc.atol,
+            rhs,
+            [t_grid[0], t_grid[-1]],
+            [p.F_bar, 0.0],
+            t_eval=t_grid,
+            method=nc.solver_method,
+            rtol=nc.rtol,
+            atol=nc.atol,
         )
         return sol.y[0], sol.y[1]
 
     def _backward(
         self,
-        t_grid: NDArray,
-        F_grid: NDArray,
-        Ms_grid: NDArray,
+        t_grid: NDArray[np.float64],
+        F_grid: NDArray[np.float64],
+        Ms_grid: NDArray[np.float64],
         mu: float,
-    ) -> tuple[NDArray, NDArray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Integrate adjoint equations backward from (μ, 0) at T.
 
         Adjoint system (forward in reversed time s = T − t):
@@ -168,15 +175,21 @@ class ForwardBackwardSweep:
         T = t_grid[-1]
 
         F_func = interp1d(
-            t_grid, F_grid, kind="linear",
-            bounds_error=False, fill_value=(F_grid[0], F_grid[-1]),
+            t_grid,
+            F_grid,
+            kind="linear",
+            bounds_error=False,
+            fill_value=(F_grid[0], F_grid[-1]),
         )
         Ms_func = interp1d(
-            t_grid, Ms_grid, kind="linear",
-            bounds_error=False, fill_value=(Ms_grid[0], Ms_grid[-1]),
+            t_grid,
+            Ms_grid,
+            kind="linear",
+            bounds_error=False,
+            fill_value=(Ms_grid[0], Ms_grid[-1]),
         )
 
-        def rhs_rev(s: float, lam: list) -> list:
+        def rhs_rev(s: float, lam: list[float]) -> list[float]:
             t = T - s
             F = max(F_func(t), 1e-10)
             Ms = max(Ms_func(t), 0.0)
@@ -187,9 +200,13 @@ class ForwardBackwardSweep:
 
         s_eval = T - t_grid[::-1]  # s = T - t, increasing
         sol = solve_ivp(
-            rhs_rev, [0.0, T], [mu, 0.0],
-            t_eval=s_eval, method=nc.solver_method,
-            rtol=nc.rtol, atol=nc.atol,
+            rhs_rev,
+            [0.0, T],
+            [mu, 0.0],
+            t_eval=s_eval,
+            method=nc.solver_method,
+            rtol=nc.rtol,
+            atol=nc.atol,
         )
         # Map back to t order
         lam1 = sol.y[0][::-1]
@@ -201,7 +218,7 @@ class ForwardBackwardSweep:
     def solve_L1(
         self,
         control_config: ControlConfig,
-        u_init: tuple[NDArray, NDArray] | None = None,
+        u_init: tuple[NDArray[np.float64], NDArray[np.float64]] | None = None,
         n_iter: int = 400,
         alpha: float = 0.3,
         tol: float = 1e-4,
@@ -238,7 +255,11 @@ class ForwardBackwardSweep:
 
         logger.info(
             "FBS: T=%g, U_max=%g, epsilon=%g, n_iter=%d, alpha=%g",
-            cfg.T, cfg.U_max, epsilon, n_iter, alpha,
+            cfg.T,
+            cfg.U_max,
+            epsilon,
+            n_iter,
+            alpha,
         )
 
         t = np.linspace(0.0, cfg.T, n_grid)
@@ -250,7 +271,8 @@ class ForwardBackwardSweep:
             logger.info("FBS: warm-started from provided control profile.")
         else:
             u = np.where(
-                t < cfg.T / 2, 0.0,
+                t < cfg.T / 2,
+                0.0,
                 cfg.U_max / 2 * (t - cfg.T / 2) / (cfg.T / 2),
             )
 
@@ -284,7 +306,10 @@ class ForwardBackwardSweep:
             if k % 50 == 0:
                 logger.debug(
                     "FBS iter %d: ||Δu||=%.2e, F(T)=%.2f, mu=%.2e",
-                    k, diff, float(F[-1]), mu,
+                    k,
+                    diff,
+                    float(F[-1]),
+                    mu,
                 )
 
             if diff < tol:
@@ -299,7 +324,12 @@ class ForwardBackwardSweep:
 
         logger.info(
             "FBS finished in %.2fs, %d iters, J=%.4e, F(T)=%.2f (ε=%.2f), converged=%s",
-            wall_time, k + 1, cost, float(F[-1]), epsilon, converged,
+            wall_time,
+            k + 1,
+            cost,
+            float(F[-1]),
+            epsilon,
+            converged,
         )
 
         return FBSweepResult(

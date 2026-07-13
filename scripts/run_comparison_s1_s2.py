@@ -55,6 +55,7 @@ logger = logging.getLogger(__name__)
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+
 def _run_bisection(
     params: BiologicalParameters,
     cfg: ControlConfig,
@@ -66,7 +67,12 @@ def _run_bisection(
     logger.info(
         "Bisection: tau1=%.2fd  tau2=%.2fd  t0=%.2fd  t1=%.2fd  "
         "F_min=%.2f  converged=%s",
-        bis.tau1, bis.tau2, bis.t0, bis.t1, bis.F_min, bis.converged,
+        bis.tau1,
+        bis.tau2,
+        bis.t0,
+        bis.t1,
+        bis.F_min,
+        bis.converged,
     )
     t, F, u = build_formula9_trajectory(params, cfg, bis, num, n_eval=n_eval)
     return bis, t, F, u
@@ -85,12 +91,20 @@ def _run_fbs(
     logger.info("Starting %s ...", label)
     fbs = ForwardBackwardSweep(params, num)
     result = fbs.solve_L1(
-        cfg, u_init=u_init, n_iter=n_iter, alpha=alpha, n_grid=n_grid,
+        cfg,
+        u_init=u_init,
+        n_iter=n_iter,
+        alpha=alpha,
+        n_grid=n_grid,
     )
     logger.info(
         "%s: J=%.4e  t=%.2fs  F(T)=%.2f  iters=%d  converged=%s",
-        label, result.cost, result.wall_time,
-        result.F_terminal, result.n_iterations, result.converged,
+        label,
+        result.cost,
+        result.wall_time,
+        result.F_terminal,
+        result.n_iterations,
+        result.converged,
     )
     return result
 
@@ -112,7 +126,10 @@ def _run_gekko(
         label = "GEKKO ramp"
     logger.info(
         "%s: J=%.4e  t=%.2fs  converged=%s",
-        label, result.cost, result.wall_time, result.converged,
+        label,
+        result.cost,
+        result.wall_time,
+        result.converged,
     )
     return result
 
@@ -134,8 +151,10 @@ def _simulate_s2(
 
 
 def _rel_error_s1_s2(
-    t_s1: np.ndarray, F_s1: np.ndarray,
-    t_s2: np.ndarray, F_s2: np.ndarray,
+    t_s1: np.ndarray,
+    F_s1: np.ndarray,
+    t_s2: np.ndarray,
+    F_s2: np.ndarray,
 ) -> tuple[float, float]:
     F_s2_i = interp1d(t_s2, F_s2, kind="linear", fill_value="extrapolate")(t_s1)
     rel = np.abs(F_s1 - F_s2_i) / np.maximum(F_s1, 1.0)
@@ -143,6 +162,7 @@ def _rel_error_s1_s2(
 
 
 # ── plotting ──────────────────────────────────────────────────────────────────
+
 
 def _plot_comparison_methods(
     results: dict,
@@ -154,16 +174,16 @@ def _plot_comparison_methods(
 
     colors = {"bis": "C0", "fbs": "C2", "gk_ramp": "C1", "gk_ws": "C3"}
     labels_s1 = {
-        "bis":     r"Bisection — $S_1$",
-        "fbs":     r"FBS — $S_1$",
+        "bis": r"Bisection — $S_1$",
+        "fbs": r"FBS — $S_1$",
         "gk_ramp": r"GEKKO (ramp) — $S_1$",
-        "gk_ws":   r"GEKKO (WS) — $S_1$",
+        "gk_ws": r"GEKKO (WS) — $S_1$",
     }
     labels_s2 = {
-        "bis":     r"Bisection — $S_2$",
-        "fbs":     r"FBS — $S_2$",
+        "bis": r"Bisection — $S_2$",
+        "fbs": r"FBS — $S_2$",
         "gk_ramp": r"GEKKO (ramp) — $S_2$",
-        "gk_ws":   r"GEKKO (WS) — $S_2$",
+        "gk_ws": r"GEKKO (WS) — $S_2$",
     }
 
     for key, color in colors.items():
@@ -172,15 +192,21 @@ def _plot_comparison_methods(
         t_s1, F_s1 = results[key]["t_s1"], results[key]["F_s1"]
         t_s2, F_s2 = results[key]["t_s2"], results[key]["F_s2"]
         ax.plot(t_s1, F_s1, color=color, lw=1.8, label=labels_s1[key])
-        ax.plot(t_s2, F_s2, color=color, lw=1.4, linestyle="--",
-                label=labels_s2[key])
+        ax.plot(t_s2, F_s2, color=color, lw=1.4, linestyle="--", label=labels_s2[key])
 
-    ax.axhline(epsilon, color="k", lw=1.1, linestyle="-.",
-               label=rf"$\varepsilon = {epsilon:.0f}$")
+    ax.axhline(
+        epsilon,
+        color="k",
+        lw=1.1,
+        linestyle="-.",
+        label=rf"$\varepsilon = {epsilon:.0f}$",
+    )
 
     ax.set_xlabel("Time (days)", fontsize=11)
     ax.set_ylabel(r"$F(t)$ (fertile females)", fontsize=11)
-    ax.set_title(r"Comparison of methods under the optimal control $u^*(t)$", fontsize=12)
+    ax.set_title(
+        r"Comparison of methods under the optimal control $u^*(t)$", fontsize=12
+    )
     ax.legend(fontsize=8, ncol=2, loc="upper right")
     ax.set_xlim(0, results[next(iter(results))]["t_s1"][-1])
     ax.set_ylim(bottom=0)
@@ -200,10 +226,10 @@ def _plot_controls(
 
     colors = {"bis": "C0", "fbs": "C2", "gk_ramp": "C1", "gk_ws": "C3"}
     labels = {
-        "bis":     r"Bisection",
-        "fbs":     r"FBS (PMP)",
+        "bis": r"Bisection",
+        "fbs": r"FBS (PMP)",
         "gk_ramp": r"GEKKO (ramp)",
-        "gk_ws":   r"GEKKO (WS bisection)",
+        "gk_ws": r"GEKKO (WS bisection)",
     }
 
     for key, color in colors.items():
@@ -212,12 +238,18 @@ def _plot_controls(
         t_u, u = results[key]["t_u"], results[key]["u"]
         ax.plot(t_u, u, color=color, lw=1.6, label=labels[key])
 
-    ax.axvline(bis.t0, color="gray", lw=0.8, linestyle=":", label=f"$t_0={bis.t0:.1f}$d")
-    ax.axvline(bis.t1, color="gray", lw=0.8, linestyle="--", label=f"$t_1={bis.t1:.1f}$d")
+    ax.axvline(
+        bis.t0, color="gray", lw=0.8, linestyle=":", label=f"$t_0={bis.t0:.1f}$d"
+    )
+    ax.axvline(
+        bis.t1, color="gray", lw=0.8, linestyle="--", label=f"$t_1={bis.t1:.1f}$d"
+    )
 
     ax.set_xlabel("Time (days)", fontsize=11)
     ax.set_ylabel(r"$u(t)$ (sterile males/day)", fontsize=11)
-    ax.set_title(r"Optimal control profile $u^*(t)$ — comparison of methods", fontsize=12)
+    ax.set_title(
+        r"Optimal control profile $u^*(t)$ — comparison of methods", fontsize=12
+    )
     ax.legend(fontsize=9, loc="upper left")
     ax.set_xlim(0, results[next(iter(results))]["t_u"][-1])
     ax.set_ylim(bottom=0)
@@ -228,8 +260,12 @@ def _plot_controls(
 
 
 def _plot_optimal_solution(
-    t_f9: np.ndarray, F_f9: np.ndarray, u_f9: np.ndarray,
-    t_gk: np.ndarray, F_gk: np.ndarray, u_gk: np.ndarray,
+    t_f9: np.ndarray,
+    F_f9: np.ndarray,
+    u_f9: np.ndarray,
+    t_gk: np.ndarray,
+    F_gk: np.ndarray,
+    u_gk: np.ndarray,
     epsilon: float,
     bis: BisectionResult,
     output_path: Path,
@@ -239,8 +275,13 @@ def _plot_optimal_solution(
 
     ax_F.plot(t_f9, F_f9, color="C0", lw=1.8, label=r"Bisection — $S_1$")
     ax_F.plot(t_gk, F_gk, color="C1", lw=1.8, linestyle="--", label=r"GEKKO — $S_1$")
-    ax_F.axhline(epsilon, color="C3", lw=1.2, linestyle="-.",
-                 label=rf"$\varepsilon = {epsilon:.0f}$")
+    ax_F.axhline(
+        epsilon,
+        color="C3",
+        lw=1.2,
+        linestyle="-.",
+        label=rf"$\varepsilon = {epsilon:.0f}$",
+    )
     ax_F.set_ylabel(r"$F(t)$ (fertile females)", fontsize=11)
     ax_F.legend(fontsize=9, loc="upper right")
     ax_F.set_ylim(bottom=0)
@@ -268,25 +309,46 @@ def _plot_optimal_solution(
 
 # ── main ──────────────────────────────────────────────────────────────────────
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True, metavar="YAML")
-    parser.add_argument("--output", type=Path, default=Path("results/comparison"),
-                        metavar="DIR")
-    parser.add_argument("--T", type=float, default=150.0,
-                        help="Time horizon in days (default: 150)")
-    parser.add_argument("--no-gekko", action="store_true",
-                        help="Skip GEKKO")
-    parser.add_argument("--no-fbs", action="store_true",
-                        help="Skip Forward-Backward Sweep")
-    parser.add_argument("--gekko-N", type=int, default=None, metavar="N",
-                        help="Number of GEKKO collocation nodes")
-    parser.add_argument("--gekko-solver", type=int, default=None, choices=[1, 3],
-                        help="GEKKO solver: 1=APOPT (default), 3=IPOPT")
-    parser.add_argument("--fbs-iter", type=int, default=400,
-                        help="Maximum FBS iterations (default: 400)")
-    parser.add_argument("--fbs-alpha", type=float, default=0.5,
-                        help="FBS blending factor (default: 0.5)")
+    parser.add_argument(
+        "--output", type=Path, default=Path("results/comparison"), metavar="DIR"
+    )
+    parser.add_argument(
+        "--T", type=float, default=150.0, help="Time horizon in days (default: 150)"
+    )
+    parser.add_argument("--no-gekko", action="store_true", help="Skip GEKKO")
+    parser.add_argument(
+        "--no-fbs", action="store_true", help="Skip Forward-Backward Sweep"
+    )
+    parser.add_argument(
+        "--gekko-N",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Number of GEKKO collocation nodes",
+    )
+    parser.add_argument(
+        "--gekko-solver",
+        type=int,
+        default=None,
+        choices=[1, 3],
+        help="GEKKO solver: 1=APOPT (default), 3=IPOPT",
+    )
+    parser.add_argument(
+        "--fbs-iter",
+        type=int,
+        default=400,
+        help="Maximum FBS iterations (default: 400)",
+    )
+    parser.add_argument(
+        "--fbs-alpha",
+        type=float,
+        default=0.5,
+        help="FBS blending factor (default: 0.5)",
+    )
     args = parser.parse_args()
 
     cfg_dict = load_config(args.config)
@@ -300,26 +362,46 @@ def main() -> None:
     epsilon = bio.F_bar / 4.0
     cfg = ControlConfig(T=args.T, U_max=cfg_dict["control"]["U_max"])
 
-    logger.info("F_bar=%.2f | epsilon=%.2f | T=%.0f | U_max=%.0f",
-                bio.F_bar, epsilon, args.T, cfg.U_max)
+    logger.info(
+        "F_bar=%.2f | epsilon=%.2f | T=%.0f | U_max=%.0f",
+        bio.F_bar,
+        epsilon,
+        args.T,
+        cfg.U_max,
+    )
     args.output.mkdir(parents=True, exist_ok=True)
 
     # Stores results per method: {key: {t_s1, F_s1, t_s2, F_s2, t_u, u}}
     results: dict = {}
-    metrics: dict = {"T": args.T, "F_bar": bio.F_bar, "epsilon": epsilon,
-                     "U_max": cfg.U_max}
+    metrics: dict = {
+        "T": args.T,
+        "F_bar": bio.F_bar,
+        "epsilon": epsilon,
+        "U_max": cfg.U_max,
+    }
 
     # ── 1. Bisection ─────────────────────────────────────────────────────────
     bis, t_bis, F_bis, u_bis = _run_bisection(bio, cfg, num)
     t_bis_s2, F_bis_s2 = _simulate_s2(bio, cfg, num, t_bis, u_bis, "Bisection")
-    results["bis"] = dict(t_s1=t_bis, F_s1=F_bis, t_s2=t_bis_s2, F_s2=F_bis_s2,
-                          t_u=t_bis, u=u_bis)
+    results["bis"] = {
+        "t_s1": t_bis,
+        "F_s1": F_bis,
+        "t_s2": t_bis_s2,
+        "F_s2": F_bis_s2,
+        "t_u": t_bis,
+        "u": u_bis,
+    }
     J_bis = float(np.trapezoid(u_bis, t_bis))
     max_err_bis, mean_err_bis = _rel_error_s1_s2(t_bis, F_bis, t_bis_s2, F_bis_s2)
     logger.info("Bisection: J=%.4e | max_err_S1vS2=%.2f%%", J_bis, max_err_bis * 100)
     metrics["bisection"] = {
-        "tau1": bis.tau1, "tau2": bis.tau2, "t0": bis.t0, "t1": bis.t1,
-        "F_min": bis.F_min, "converged": bis.converged, "J": J_bis,
+        "tau1": bis.tau1,
+        "tau2": bis.tau2,
+        "t0": bis.t0,
+        "t1": bis.t1,
+        "F_min": bis.F_min,
+        "converged": bis.converged,
+        "J": J_bis,
         "max_rel_err_s1_s2_pct": max_err_bis * 100,
     }
 
@@ -327,26 +409,41 @@ def main() -> None:
     if not args.no_fbs:
         try:
             fbs_result = _run_fbs(
-                bio, cfg, num,
+                bio,
+                cfg,
+                num,
                 u_init=(t_bis, u_bis),  # warm-start with bisection
                 n_iter=args.fbs_iter,
                 alpha=args.fbs_alpha,
             )
             t_fbs_s2, F_fbs_s2 = _simulate_s2(
-                bio, cfg, num, fbs_result.t, fbs_result.u_opt, "FBS",
+                bio,
+                cfg,
+                num,
+                fbs_result.t,
+                fbs_result.u_opt,
+                "FBS",
             )
-            results["fbs"] = dict(
-                t_s1=fbs_result.t, F_s1=fbs_result.F_opt,
-                t_s2=t_fbs_s2, F_s2=F_fbs_s2,
-                t_u=fbs_result.t, u=fbs_result.u_opt,
-            )
+            results["fbs"] = {
+                "t_s1": fbs_result.t,
+                "F_s1": fbs_result.F_opt,
+                "t_s2": t_fbs_s2,
+                "F_s2": F_fbs_s2,
+                "t_u": fbs_result.t,
+                "u": fbs_result.u_opt,
+            }
             max_err_fbs, mean_err_fbs = _rel_error_s1_s2(
-                fbs_result.t, fbs_result.F_opt, t_fbs_s2, F_fbs_s2,
+                fbs_result.t,
+                fbs_result.F_opt,
+                t_fbs_s2,
+                F_fbs_s2,
             )
-            logger.info("FBS: J=%.4e | max_err_S1vS2=%.2f%%",
-                        fbs_result.cost, max_err_fbs * 100)
+            logger.info(
+                "FBS: J=%.4e | max_err_S1vS2=%.2f%%", fbs_result.cost, max_err_fbs * 100
+            )
             metrics["fbs"] = {
-                "J": fbs_result.cost, "wall_time": fbs_result.wall_time,
+                "J": fbs_result.cost,
+                "wall_time": fbs_result.wall_time,
                 "n_iterations": fbs_result.n_iterations,
                 "converged": fbs_result.converged,
                 "F_terminal": fbs_result.F_terminal,
@@ -361,17 +458,27 @@ def main() -> None:
         try:
             gk_ramp = _run_gekko(bio, cfg, num, u_init=None)
             t_gkr_s2, F_gkr_s2 = _simulate_s2(
-                bio, cfg, num, gk_ramp.t, gk_ramp.u_opt, "GEKKO-ramp",
+                bio,
+                cfg,
+                num,
+                gk_ramp.t,
+                gk_ramp.u_opt,
+                "GEKKO-ramp",
             )
-            results["gk_ramp"] = dict(
-                t_s1=gk_ramp.t, F_s1=gk_ramp.F_opt,
-                t_s2=t_gkr_s2, F_s2=F_gkr_s2,
-                t_u=gk_ramp.t, u=gk_ramp.u_opt,
+            results["gk_ramp"] = {
+                "t_s1": gk_ramp.t,
+                "F_s1": gk_ramp.F_opt,
+                "t_s2": t_gkr_s2,
+                "F_s2": F_gkr_s2,
+                "t_u": gk_ramp.t,
+                "u": gk_ramp.u_opt,
+            }
+            max_err_gkr, _ = _rel_error_s1_s2(
+                gk_ramp.t, gk_ramp.F_opt, t_gkr_s2, F_gkr_s2
             )
-            max_err_gkr, _ = _rel_error_s1_s2(gk_ramp.t, gk_ramp.F_opt,
-                                               t_gkr_s2, F_gkr_s2)
             metrics["gekko_ramp"] = {
-                "J": gk_ramp.cost, "wall_time": gk_ramp.wall_time,
+                "J": gk_ramp.cost,
+                "wall_time": gk_ramp.wall_time,
                 "converged": gk_ramp.converged,
                 "max_rel_err_s1_s2_pct": max_err_gkr * 100,
             }
@@ -379,23 +486,34 @@ def main() -> None:
             # ── 4. GEKKO (bisection warm-start) ──────────────────────────────
             gk_ws = _run_gekko(bio, cfg, num, u_init=(t_bis, u_bis))
             t_gkws_s2, F_gkws_s2 = _simulate_s2(
-                bio, cfg, num, gk_ws.t, gk_ws.u_opt, "GEKKO-WS",
+                bio,
+                cfg,
+                num,
+                gk_ws.t,
+                gk_ws.u_opt,
+                "GEKKO-WS",
             )
-            results["gk_ws"] = dict(
-                t_s1=gk_ws.t, F_s1=gk_ws.F_opt,
-                t_s2=t_gkws_s2, F_s2=F_gkws_s2,
-                t_u=gk_ws.t, u=gk_ws.u_opt,
+            results["gk_ws"] = {
+                "t_s1": gk_ws.t,
+                "F_s1": gk_ws.F_opt,
+                "t_s2": t_gkws_s2,
+                "F_s2": F_gkws_s2,
+                "t_u": gk_ws.t,
+                "u": gk_ws.u_opt,
+            }
+            max_err_gkws, _ = _rel_error_s1_s2(
+                gk_ws.t, gk_ws.F_opt, t_gkws_s2, F_gkws_s2
             )
-            max_err_gkws, _ = _rel_error_s1_s2(gk_ws.t, gk_ws.F_opt,
-                                                t_gkws_s2, F_gkws_s2)
             metrics["gekko_warmstart"] = {
-                "J": gk_ws.cost, "wall_time": gk_ws.wall_time,
+                "J": gk_ws.cost,
+                "wall_time": gk_ws.wall_time,
                 "converged": gk_ws.converged,
                 "max_rel_err_s1_s2_pct": max_err_gkws * 100,
             }
             logger.info(
                 "GEKKO ramp J=%.4e | GEKKO WS J=%.4e",
-                gk_ramp.cost, gk_ws.cost,
+                gk_ramp.cost,
+                gk_ws.cost,
             )
 
         except Exception as exc:
@@ -407,8 +525,11 @@ def main() -> None:
     logger.info("COST SUMMARY J*(u)")
     logger.info("  Bisection :  J = %.4e", J_bis)
     if "fbs" in metrics:
-        logger.info("  FBS       :  J = %.4e  (F(T)=%.1f)",
-                    metrics["fbs"]["J"], metrics["fbs"]["F_terminal"])
+        logger.info(
+            "  FBS       :  J = %.4e  (F(T)=%.1f)",
+            metrics["fbs"]["J"],
+            metrics["fbs"]["F_terminal"],
+        )
     if "gekko_ramp" in metrics:
         logger.info("  GEKKO ramp:  J = %.4e", metrics["gekko_ramp"]["J"])
     if "gekko_warmstart" in metrics:
@@ -417,10 +538,14 @@ def main() -> None:
 
     # ── 6. Figures ────────────────────────────────────────────────────────────
     _plot_comparison_methods(
-        results, epsilon, args.output / "fig_comparacion_metodos.pdf",
+        results,
+        epsilon,
+        args.output / "fig_comparacion_metodos.pdf",
     )
     _plot_controls(
-        results, bis, args.output / "fig_controles_optimos.pdf",
+        results,
+        bis,
+        args.output / "fig_controles_optimos.pdf",
     )
 
     # Classic bisection vs GEKKO figure (for the thesis)
@@ -428,8 +553,15 @@ def main() -> None:
     F_gk = gk_ramp.F_opt if "gk_ramp" in results else F_bis
     u_gk = gk_ramp.u_opt if "gk_ramp" in results else u_bis
     _plot_optimal_solution(
-        t_bis, F_bis, u_bis, t_gk, F_gk, u_gk,
-        epsilon, bis, args.output / "fig_solucion_optima.pdf",
+        t_bis,
+        F_bis,
+        u_bis,
+        t_gk,
+        F_gk,
+        u_gk,
+        epsilon,
+        bis,
+        args.output / "fig_solucion_optima.pdf",
     )
 
     # ── 7. JSON ───────────────────────────────────────────────────────────────

@@ -1,0 +1,56 @@
+cff-version: 1.2.0
+title: "SIT-Control: Optimal Control for the Sterile Insect Technique"
+message: "If you use this software, please cite both the software and the accompanying thesis."
+type: software
+authors:
+  - given-names: Adil
+    family-names: "El Haji Lamdaghri"
+version: 0.1.0
+date-released: 2026-07-13
+license: MIT
+repository-code: "https://github.com/adilelhaji/sit-control"
+keywords:
+  - sterile insect technique
+  - optimal control
+  - Pontryagin maximum principle
+  - reinforcement learning
+  - mosquito population suppression
+  - Aedes polynesiensis
+abstract: >-
+  Numerical implementation of optimal-control release strategies for the
+  Sterile Insect Technique (SIT) in mosquito vector control, building on the
+  optimal-control model of Almeida et al. (2022) for Aedes polynesiensis.
+  Reproduces and verifies the bang-singular-bang optimal solution, compares
+  five release strategies, performs a parametric sensitivity analysis, and
+  trains a closed-loop reinforcement-learning policy (PPO with domain
+  randomization) for robustness under parametric uncertainty.
+# A Zenodo DOI will be minted on first public release; add it here as `doi:`
+# and under `identifiers:` once available.
+preferred-citation:
+  type: thesis
+  title: "Optimal Control Strategies for Mosquito Population Suppression via the Sterile Insect Technique"
+  authors:
+    - given-names: Adil
+      family-names: "El Haji Lamdaghri"
+  year: 2026
+  institution:
+    name: "Universitat Autònoma de Barcelona"
+  thesis-type: "Bachelor's thesis (Treball de Fi de Grau)"
+references:
+  - type: article
+    title: "Optimal control strategies for the sterile mosquitoes technique"
+    authors:
+      - family-names: Almeida
+        given-names: Luís
+      - family-names: Duprez
+        given-names: Michel
+      - family-names: Privat
+        given-names: Yannick
+      - family-names: Vauchelet
+        given-names: Nicolas
+    journal: "Journal of Differential Equations"
+    volume: 311
+    start: 229
+    end: 266
+    year: 2022
+    doi: "10.1016/j.jde.2021.12.002"
