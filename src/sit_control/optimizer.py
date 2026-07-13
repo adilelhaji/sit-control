@@ -170,9 +170,9 @@ class GekkoOptimiser:
             converged = False
         wall_time = time.perf_counter() - t_start
 
-        u_arr = np.array(u.value)
-        F_arr = np.array(F.value)
-        Ms_arr = np.array(Ms.value)
+        u_arr = np.array(list(u.value))
+        F_arr = np.array(list(F.value))
+        Ms_arr = np.array(list(Ms.value))
         cost = float(np.trapezoid(u_arr, m.time))
 
         logger.info(
@@ -279,9 +279,9 @@ class GekkoOptimiser:
             converged = False
         wall_time = time.perf_counter() - t_start
 
-        u_arr = np.array(u.value)
-        F_arr = np.array(F.value)
-        Ms_arr = np.array(Ms.value)
+        u_arr = np.array(list(u.value))
+        F_arr = np.array(list(F.value))
+        Ms_arr = np.array(list(Ms.value))
         cost = float(np.trapezoid(u_arr, m.time))
 
         logger.info(
@@ -406,8 +406,19 @@ class GekkoOptimiser:
         final_param = m.Param(value=final, name="final")
         m.Equation(F * final_param <= epsilon)
 
-        # L2 cost functional: integral of (c/2) * u^2
-        m.Minimize(m.integral(c_weight / 2.0 * u**2))
+        # L2 cost functional: integral of (c/2) * u^2.
+        #
+        # The raw objective has magnitude ~ (c/2) * U_max^2 * T (~1e9 for the
+        # default configuration). At that scale APOPT's internal bounded-QP
+        # subproblem becomes ill-conditioned and faults ("Inconsistent LA
+        # Vector") before reaching a feasible point, so the NLP never
+        # converges. Non-dimensionalising the objective by its characteristic
+        # scale keeps it O(1) and restores convergence. Scaling by a positive
+        # constant does not move the minimiser, and the reported `cost` below
+        # is recomputed from the extracted control (not GEKKO's objective
+        # value), so the physical cost is unaffected by this normalisation.
+        obj_scale = 1.0 / (0.5 * c_weight * cfg.U_max**2 * cfg.T)
+        m.Minimize(m.integral(c_weight / 2.0 * u**2) * obj_scale)
 
         # Solver configuration (apopt_rtol separate from ODE rtol)
         m.options.SOLVER = self.num_config.gekko_solver  # 1=APOPT, 3=IPOPT
@@ -424,9 +435,9 @@ class GekkoOptimiser:
             converged = False
         wall_time = time.perf_counter() - t_start
 
-        u_arr = np.array(u.value)
-        F_arr = np.array(F.value)
-        Ms_arr = np.array(Ms.value)
+        u_arr = np.array(list(u.value))
+        F_arr = np.array(list(F.value))
+        Ms_arr = np.array(list(Ms.value))
         cost = float(np.trapezoid(0.5 * c_weight * u_arr**2, m.time))
 
         logger.info(
