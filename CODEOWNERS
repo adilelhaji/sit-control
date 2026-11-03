@@ -1,0 +1,26 @@
+# Lo que siempre pasa por Adil (ver CLAUDE.md, «Cómo se trabaja»).
+# Con «revisión de los dueños del código» activada en la protección de main,
+# solo las PR que tocan estas rutas esperan su aprobación; el resto no.
+
+# La guía, el flujo de trabajo, CI y la comprobación
+/CLAUDE.md                               @adilelhaji
+/CODEOWNERS                              @adilelhaji
+/.claude/                                @adilelhaji
+/.github/                                @adilelhaji
+/scripts/comprobar.sh                    @adilelhaji
+/.pre-commit-config.yaml                 @adilelhaji
+
+# Dependencias, licencia y cita
+/pyproject.toml                          @adilelhaji
+/poetry.lock                             @adilelhaji
+/LICENSE                                 @adilelhaji
+/CITATION.cff                            @adilelhaji
+
+# Los valores de referencia y el modelo matemático
+/configs/                                @adilelhaji
+/src/sit_control/model.py                @adilelhaji
+/src/sit_control/parameters.py           @adilelhaji
+
+# Documentación de la tesis
+/docs/                                   @adilelhaji
+/README.md                               @adilelhaji

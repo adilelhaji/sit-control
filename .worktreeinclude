@@ -1,0 +1,4 @@
+# Archivos ignorados por git que Claude Code copia a cada copia de trabajo (worktree) que crea.
+# Este repositorio no necesita ninguno: las dependencias se instalan con `poetry install --all-extras`
+# (o lo hace scripts/comprobar.sh la primera vez). Si algún día hace falta un archivo local pequeño,
+# se añade aquí; nunca secretos grandes.

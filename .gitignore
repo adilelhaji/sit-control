@@ -6,7 +6,8 @@ __pycache__/
 
 
 # Distribution / packaging
-.claude/
+.claude/worktrees/
+.claude/settings.local.json
 .idea/
 build/
 dist/
@@ -44,7 +45,6 @@ htmlcov/
 # Project-specific outputs
 results/
 figures/
-.claude/
 *.log
 *.tmp
 gekko_*/        # GEKKO work directories
