@@ -26,8 +26,8 @@ python main.py verify --config configs/almeida2022.yaml   # también: strategies
 ## Cómo se trabaja
 
 - Una issue = una rama = una PR. Flujo con las skills `/issue`, `/revisar` y `/pr` y los agentes de `.claude/agents/`. Explica el resultado a Adil en castellano y sin tecnicismos.
-- Commits en castellano, con el porqué. Nunca push a `main` ni fusiones a mano; la fusión la decide Adil.
-- Pasan siempre por Adil las rutas de `CODEOWNERS` (guía, flujo, CI, dependencias, `configs/`, `model.py`, `parameters.py`, `docs/`, README).
+- Commits en castellano, con el porqué. Nunca push a `main`.
+- **Aprobación de Adil** (decidido por Adil el 3-11-2026, confirmado el 4-11-2026): Adil solo aprueba una PR si cambia la arquitectura o se desvía de la propuesta original; entonces se para y se le pregunta. Todo lo demás lo fusiona la sesión (squash) cuando `/revisar` no deja nada que bloquee y las comprobaciones están en verde, en GitHub si las hay y con `scripts/comprobar.sh` si no. `CODEOWNERS` es aviso, no bloqueo: la PR lo dice en el cuerpo y no espera. Las rutas de `CODEOWNERS` son las delicadas (guía, flujo, CI, dependencias, `configs/`, `model.py`, `parameters.py`, `docs/`, README).
 - Garantizado por los hooks de `.claude/hooks/`: no se hace push a `main` ni forzado ni con `--no-verify`; no se escriben archivos de secretos; no se pone ni se toca un umbral de cobertura (`fail_under`); al terminar, si hay código tocado, se ejecuta `scripts/comprobar.sh` y debe pasar. Para una excepción consciente: `SIT_PERMITIR_PROTEGIDOS=1` en la terminal de Adil.
 - No leer `.env` ni otros secretos (están denegados en `.claude/settings.json`).
 

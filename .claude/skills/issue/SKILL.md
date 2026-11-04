@@ -50,4 +50,4 @@ La PR cierra la issue con `Closes #N`. Si la issue cambió una decisión o ense�
 
 ## Lo que nunca haces
 
-Bajar o excluir cobertura o fijar un umbral que Adil no ha decidido; saltar, apagar o marcar como lenta una prueba para que pase; commits vacíos para relanzar CI; push a `main`; fusionar a mano.
+Bajar o excluir cobertura o fijar un umbral que Adil no ha decidido; saltar, apagar o marcar como lenta una prueba para que pase; commits vacíos para relanzar CI; push a `main`; fusionar en rojo.

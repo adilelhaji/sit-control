@@ -19,6 +19,6 @@ Después:
 
 7. Push de la rama (`git push -u origin <rama>`).
 8. Abre la PR **lista para revisión (no borrador)** con el título en imperativo y el cuerpo según `.github/pull_request_template.md`: qué, `Closes #N`, por qué, evidencia, qué se probó, qué queda fuera, desvíos y revisión, lo que necesita a Adil (si toca una ruta de `CODEOWNERS`, cuál). Termina el cuerpo con las líneas de atribución que pide la sesión.
-9. **No actives el auto-merge ni fusiones**: la fusión la decide Adil. (Si Adil lo pide expresamente para una PR, entonces sí.)
+9. **Fusiona** (squash) si `/revisar` no dejó nada que bloquee y las comprobaciones están en verde, en GitHub si las hay y con `scripts/comprobar.sh` si no. Espera a que terminen: `--auto` fusiona al momento si el repositorio no exige ninguna. Adil decidió el 3-11-2026, y confirmó el 4-11-2026, que solo aprueba los cambios de arquitectura y los desvíos de la propuesta original: en esos casos paras y le preguntas. Si la PR toca una ruta de `CODEOWNERS`, lo dices en el cuerpo, pero no esperas.
 10. Suscríbete a la actividad de la PR y responde a lo que llegue (CI en rojo, comentarios) según las reglas de esa suscripción.
-11. Devuelve a la conversación el enlace y, en una línea, si espera a CI y a Adil.
+11. Devuelve a la conversación el enlace y, en una línea, si ya está fusionada, si espera a las comprobaciones o qué desvío espera a Adil.

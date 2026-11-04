@@ -1,3 +1,5 @@
+# Desde el 3-11-2026 (decidido por Adil) estas rutas son aviso, no bloqueo: ver CLAUDE.md. Adil solo aprueba
+# los cambios de arquitectura y los desvíos de la propuesta original.
 # Lo que siempre pasa por Adil (ver CLAUDE.md, «Cómo se trabaja»).
 # Con «revisión de los dueños del código» activada en la protección de main,
 # solo las PR que tocan estas rutas esperan su aprobación; el resto no.
